@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "analyze": "ANALYZE=true npm run build",
-    "test": "NODE_ENV=test vitest run",
+    "test": "cross-env NODE_ENV=test vitest run",
     "stripe": "stripe listen --forward-to localhost:3002/webhooks/payments",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
@@ -26,7 +26,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "svix": "^1.80.0",
-    "zod": "^4.1.12"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
@@ -35,7 +35,9 @@
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.3"
   }
 }
+
