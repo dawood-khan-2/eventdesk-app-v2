@@ -1,3 +1,7 @@
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Prisma Client generated files (copied to app during postinstall)
+generated/
+

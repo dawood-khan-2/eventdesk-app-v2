@@ -2,11 +2,6 @@ import withBundleAnalyzer from "@next/bundle-analyzer";
 import type { NextConfig } from "next";
 
 export const config: NextConfig = {
-  // Include Prisma engine files in the bundle for Vercel monorepo deployments
-  outputFileTracingIncludes: {
-    "/**": ["../../packages/database/generated/client/**/*"],
-  },
-
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
