@@ -6,6 +6,13 @@ import { env } from "@/env";
 
 let nextConfig: NextConfig = withToolbar(withLogging(config));
 
+nextConfig = {
+  ...nextConfig,
+  outputFileTracingIncludes: {
+    "/**/*": ["../../node_modules/.prisma/client/**/*"],
+  },
+};
+
 if (env.VERCEL) {
   nextConfig = withSentry(nextConfig);
 }
