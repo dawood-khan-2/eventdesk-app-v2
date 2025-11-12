@@ -8,8 +8,7 @@
     "analyze": "ANALYZE=true npm run build",
     "test": "cross-env NODE_ENV=test vitest run",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "typecheck": "tsc --noEmit --emitDeclarationOnly false",
-    "postinstall": "node -e \"try { require('fs').cpSync('../../packages/database/generated/client', 'generated/client', { recursive: true }); } catch(e) {}\""
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
     "@repo/analytics": "*",
