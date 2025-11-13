@@ -36,3 +36,79 @@ export const config: NextConfig = {
 
 export const withAnalyzer = (sourceConfig: NextConfig): NextConfig =>
   withBundleAnalyzer()(sourceConfig);
+
+export const withSVGR = (sourceConfig: NextConfig): NextConfig => {
+  return {
+    ...sourceConfig,
+    // Turbopack configuration for SVGR
+    turbopack: {
+      rules: {
+        '*.svg': {
+          loaders: [
+            {
+              loader: '@svgr/webpack',
+              options: {
+                typescript: true,
+                dimensions: false,
+                svgoConfig: {
+                  plugins: [
+                    {
+                      name: 'preset-default',
+                      params: {
+                        overrides: {
+                          removeViewBox: false,
+                        },
+                      },
+                    },
+                    'removeDimensions',
+                  ],
+                },
+              },
+            },
+          ],
+          as: '*.js',
+        },
+      },
+    },
+    // Simplified webpack configuration for SVGR (fallback for non-turbopack builds)
+    webpack(config, context) {
+      // Call existing webpack config first
+      if (sourceConfig.webpack) {
+        config = sourceConfig.webpack(config, context) || config;
+      }
+
+      // Add SVGR support for production builds
+      config.module = config.module || {};
+      config.module.rules = config.module.rules || [];
+
+      // Add SVGR rule
+      config.module.rules.push({
+        test: /\.svg$/i,
+        use: [
+          {
+            loader: '@svgr/webpack',
+            options: {
+              typescript: true,
+              dimensions: false,
+              svgoConfig: {
+                plugins: [
+                  {
+                    name: 'preset-default',
+                    params: {
+                      overrides: {
+                        removeViewBox: false,
+                      },
+                    },
+                  },
+                  'removeDimensions',
+                ],
+              },
+            },
+          },
+        ],
+      });
+
+      return config;
+    },
+  };
+};
