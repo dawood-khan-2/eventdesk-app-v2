@@ -8,8 +8,8 @@ import { AvatarStack } from "./components/avatar-stack";
 import { Cursors } from "./components/cursors";
 import { Header } from "./components/header";
 
-const title = "Acme Inc";
-const description = "My application.";
+const title = "EventDesk";
+const description = "All-in-One Event Management Platform";
 
 const CollaborationProvider = dynamic(() =>
   import("./components/collaboration-provider").then(
