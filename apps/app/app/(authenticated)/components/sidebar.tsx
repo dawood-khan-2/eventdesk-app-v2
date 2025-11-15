@@ -36,21 +36,16 @@ import {
 import { cn } from "@repo/design-system/lib/utils";
 import { NotificationsTrigger } from "@repo/notifications/components/trigger";
 import {
-  AnchorIcon,
-  BookOpenIcon,
-  BotIcon,
   ChevronRightIcon,
-  FolderIcon,
-  FrameIcon,
-  LifeBuoyIcon,
-  MapIcon,
-  MoreHorizontalIcon,
-  PieChartIcon,
-  SendIcon,
   Settings2Icon,
-  ShareIcon,
-  SquareTerminalIcon,
-  Trash2Icon,
+  CalendarDaysIcon,
+  LayoutDashboardIcon,
+  CalculatorIcon,
+  MagnetIcon,
+  ContactIcon,
+  FileTextIcon,
+  StoreIcon,
+  ReceiptIcon,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -68,67 +63,60 @@ const data = {
   },
   navMain: [
     {
-      title: "Playground",
+      title: "Dashboard",
       url: "#",
-      icon: SquareTerminalIcon,
+      icon: LayoutDashboardIcon,
       isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
+      // items: [
+      //   {
+      //     title: "History",
+      //     url: "#",
+      //   },
+      //   {
+      //     title: "Starred",
+      //     url: "#",
+      //   },
+      //   {
+      //     title: "Settings",
+      //     url: "#",
+      //   },
+      // ],
         },
         {
-          title: "Starred",
+      title: "Events",
           url: "#",
+      icon: CalendarDaysIcon,
         },
         {
-          title: "Settings",
+      title: "Budget",
           url: "#",
+      icon: CalculatorIcon,
         },
-      ],
-    },
+        {
+      title: "Clients",
+          url: "#",
+      icon: ContactIcon,
+        },
     {
-      title: "Models",
+      title: "Leads",
       url: "#",
-      icon: BotIcon,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
+      icon: MagnetIcon,
         },
         {
-          title: "Explorer",
+      title: "Invoices",
           url: "#",
+      icon: FileTextIcon,
         },
         {
-          title: "Quantum",
+      title: "Bills",
           url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpenIcon,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
+      icon: ReceiptIcon,
         },
         {
-          title: "Get Started",
+      title: "Vendors",
           url: "#",
+      icon: StoreIcon,
         },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
     {
       title: "Settings",
       url: "#",
@@ -151,40 +139,6 @@ const data = {
           url: "#",
         },
       ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Webhooks",
-      url: "/webhooks",
-      icon: AnchorIcon,
-    },
-    {
-      title: "Support",
-      url: "#",
-      icon: LifeBuoyIcon,
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: SendIcon,
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: FrameIcon,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChartIcon,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: MapIcon,
     },
   ],
 };
@@ -215,7 +169,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
         <Search />
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Platform</SidebarGroupLabel>
+            {/* <SidebarGroupLabel>Platform</SidebarGroupLabel> */}
             <SidebarMenu>
               {data.navMain.map((item) => (
                 <Collapsible
@@ -258,7 +212,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
               ))}
             </SidebarMenu>
           </SidebarGroup>
-          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+          {/* <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel>Projects</SidebarGroupLabel>
             <SidebarMenu>
               {data.projects.map((item) => (
@@ -321,7 +275,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
-          </SidebarGroup>
+          </SidebarGroup> */}
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
