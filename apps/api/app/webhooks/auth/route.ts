@@ -11,8 +11,24 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { env } from "@/env";
+import { database } from "@repo/database";
 
-const handleUserCreated = (data: UserJSON) => {
+const handleUserCreated = async (data: UserJSON) => {
+  
+  try {
+    // Create user in database
+    await database.user.create({
+      data: {
+        clerkId: data.id,
+        email: data.email_addresses.at(0)?.email_address || "",
+        firstName: data.first_name || null,
+        lastName: data.last_name || null,
+        imageUrl: data.image_url || null,
+        phone: data.phone_numbers.at(0)?.phone_number || null,
+      },
+    });
+
+    // Analytics identify (only on success)
   analytics.identify({
     distinctId: data.id,
     properties: {
@@ -25,15 +41,32 @@ const handleUserCreated = (data: UserJSON) => {
     },
   });
 
+    return new Response("User created", { status: 201 });
+  } catch (error) {
+    log.error("Failed to create user in database:", { error, userId: data.id });
+    return new Response("User creation failed", { status: 500 });
+  } finally {
+    // Always capture the event, regardless of database success/failure
   analytics.capture({
     event: "User Created",
     distinctId: data.id,
   });
-
-  return new Response("User created", { status: 201 });
+  }
 };
 
-const handleUserUpdated = (data: UserJSON) => {
+const handleUserUpdated = async (data: UserJSON) => {
+	try {
+		await database.user.updateMany({
+			where: { clerkId: data.id },
+			data: {
+				email: data.email_addresses.at(0)?.email_address || "",
+				firstName: data.first_name || null,
+				lastName: data.last_name || null,
+				imageUrl: data.image_url || null,
+				phone: data.phone_numbers.at(0)?.phone_number || null,
+			},
+		});
+
   analytics.identify({
     distinctId: data.id,
     properties: {
@@ -46,33 +79,73 @@ const handleUserUpdated = (data: UserJSON) => {
     },
   });
 
+		return new Response("User updated", { status: 201 });
+	} catch (error) {
+		log.error("Failed to update user in database:", { error, userId: data.id });
+		return new Response("User update failed", { status: 500 });
+	} finally {
   analytics.capture({
     event: "User Updated",
     distinctId: data.id,
   });
-
-  return new Response("User updated", { status: 201 });
+	}
 };
 
-const handleUserDeleted = (data: DeletedObjectJSON) => {
+const handleUserDeleted = async (data: DeletedObjectJSON) => {
+	try {
   if (data.id) {
+			// Find local user id by Clerk id
+			const user = await database.user.findUnique({
+				where: { clerkId: data.id },
+				select: { id: true },
+			});
+
+			if (user) {
+				// Remove memberships to satisfy FK constraints
+				await database.organizationMember.deleteMany({
+					where: { userId: user.id },
+				});
+
+				await database.user.delete({
+					where: { clerkId: data.id },
+				});
+			}
+
     analytics.identify({
       distinctId: data.id,
-      properties: {
-        deleted: new Date(),
-      },
+				properties: { deleted: new Date() },
     });
+		}
 
+		return new Response("User deleted", { status: 201 });
+	} catch (error) {
+		log.error("Failed to hard-delete user:", { error, userId: data.id });
+		return new Response("User delete failed", { status: 500 });
+	} finally {
+		if (data.id) {
     analytics.capture({
       event: "User Deleted",
       distinctId: data.id,
     });
   }
-
-  return new Response("User deleted", { status: 201 });
+	}
 };
 
-const handleOrganizationCreated = (data: OrganizationJSON) => {
+const handleOrganizationCreated = async (data: OrganizationJSON) => {
+  try {
+    await database.organization.upsert({
+      where: { clerkId: data.id },
+      create: {
+        clerkId: data.id,
+        name: data.name,
+        imageUrl: data.image_url ?? null,
+      },
+      update: {
+        name: data.name,
+        imageUrl: data.image_url ?? null,
+      },
+    });
+
   analytics.groupIdentify({
     groupKey: data.id,
     groupType: "company",
@@ -83,17 +156,30 @@ const handleOrganizationCreated = (data: OrganizationJSON) => {
     },
   });
 
+    return new Response("Organization created", { status: 201 });
+  } catch (error) {
+    log.error("Failed to upsert organization", { error, orgId: data.id });
+    return new Response("Organization create failed", { status: 500 });
+  } finally {
   if (data.created_by) {
     analytics.capture({
       event: "Organization Created",
       distinctId: data.created_by,
     });
   }
-
-  return new Response("Organization created", { status: 201 });
+  }
 };
 
-const handleOrganizationUpdated = (data: OrganizationJSON) => {
+const handleOrganizationUpdated = async (data: OrganizationJSON) => {
+  try {
+    await database.organization.updateMany({
+      where: { clerkId: data.id },
+      data: {
+        name: data.name,
+        imageUrl: data.image_url ?? null,
+      },
+    });
+
   analytics.groupIdentify({
     groupKey: data.id,
     groupType: "company",
@@ -104,44 +190,115 @@ const handleOrganizationUpdated = (data: OrganizationJSON) => {
     },
   });
 
+    return new Response("Organization updated", { status: 201 });
+  } catch (error) {
+    log.error("Failed to update organization", { error, orgId: data.id });
+    return new Response("Organization update failed", { status: 500 });
+  } finally {
   if (data.created_by) {
     analytics.capture({
       event: "Organization Updated",
       distinctId: data.created_by,
     });
   }
-
-  return new Response("Organization updated", { status: 201 });
+  }
 };
 
-const handleOrganizationMembershipCreated = (
+const handleOrganizationMembershipCreated = async (
   data: OrganizationMembershipJSON
 ) => {
+  try {
+    await database.organization.upsert({
+      where: { clerkId: data.organization.id },
+      create: {
+        clerkId: data.organization.id,
+        name: data.organization.name,
+        imageUrl: data.organization.image_url ?? null,
+      },
+      update: {
+        name: data.organization.name,
+        imageUrl: data.organization.image_url ?? null,
+      },
+    });
+
+    const user = await database.user.findUnique({
+      where: { clerkId: data.public_user_data.user_id },
+      select: { id: true },
+    });
+    const org = await database.organization.findUnique({
+      where: { clerkId: data.organization.id },
+      select: { id: true },
+    });
+
+    if (user && org) {
+      await database.organizationMember.upsert({
+        where: { userId_orgId: { userId: user.id, orgId: org.id } },
+        create: {
+          userId: user.id,
+          orgId: org.id,
+          role: data.role ?? null,
+        },
+        update: {
+          role: data.role ?? null,
+        },
+      });
+    }
+
   analytics.groupIdentify({
     groupKey: data.organization.id,
     groupType: "company",
     distinctId: data.public_user_data.user_id,
   });
 
+    return new Response("Organization membership created", { status: 201 });
+  } catch (error) {
+    log.error("Failed to upsert organization membership", {
+      error,
+      orgId: data.organization.id,
+      userId: data.public_user_data.user_id,
+    });
+    return new Response("Organization membership create failed", { status: 500 });
+  } finally {
   analytics.capture({
     event: "Organization Member Created",
     distinctId: data.public_user_data.user_id,
   });
-
-  return new Response("Organization membership created", { status: 201 });
+  }
 };
 
-const handleOrganizationMembershipDeleted = (
+const handleOrganizationMembershipDeleted = async (
   data: OrganizationMembershipJSON
 ) => {
-  // Need to unlink the user from the group
+  try {
+    const user = await database.user.findUnique({
+      where: { clerkId: data.public_user_data.user_id },
+      select: { id: true },
+    });
+    const org = await database.organization.findUnique({
+      where: { clerkId: data.organization.id },
+      select: { id: true },
+    });
 
+    if (user && org) {
+      await database.organizationMember.deleteMany({
+        where: { userId: user.id, orgId: org.id },
+      });
+    }
+
+    return new Response("Organization membership deleted", { status: 201 });
+  } catch (error) {
+    log.error("Failed to delete organization membership", {
+      error,
+      orgId: data.organization.id,
+      userId: data.public_user_data.user_id,
+    });
+    return new Response("Organization membership delete failed", { status: 500 });
+  } finally {
   analytics.capture({
     event: "Organization Member Deleted",
     distinctId: data.public_user_data.user_id,
   });
-
-  return new Response("Organization membership deleted", { status: 201 });
+  }
 };
 
 export const POST = async (request: Request): Promise<Response> => {
@@ -195,31 +352,31 @@ export const POST = async (request: Request): Promise<Response> => {
 
   switch (eventType) {
     case "user.created": {
-      response = handleUserCreated(event.data);
+      response = await handleUserCreated(event.data);
       break;
     }
     case "user.updated": {
-      response = handleUserUpdated(event.data);
+      response = await handleUserUpdated(event.data);
       break;
     }
     case "user.deleted": {
-      response = handleUserDeleted(event.data);
+      response = await handleUserDeleted(event.data);
       break;
     }
     case "organization.created": {
-      response = handleOrganizationCreated(event.data);
+      response = await handleOrganizationCreated(event.data);
       break;
     }
     case "organization.updated": {
-      response = handleOrganizationUpdated(event.data);
+      response = await handleOrganizationUpdated(event.data);
       break;
     }
     case "organizationMembership.created": {
-      response = handleOrganizationMembershipCreated(event.data);
+      response = await handleOrganizationMembershipCreated(event.data);
       break;
     }
     case "organizationMembership.deleted": {
-      response = handleOrganizationMembershipDeleted(event.data);
+      response = await handleOrganizationMembershipDeleted(event.data);
       break;
     }
     default: {
