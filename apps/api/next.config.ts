@@ -13,4 +13,11 @@ if (env.ANALYZE === "true") {
   nextConfig = withAnalyzer(nextConfig);
 }
 
+nextConfig = {
+  ...nextConfig,
+  outputFileTracingIncludes: {
+    "/**/*": ["../../node_modules/.prisma/client/**/*"],
+  },
+};
+
 export default nextConfig;
