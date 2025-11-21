@@ -99,7 +99,7 @@ const data = {
         },
     {
       title: "Leads",
-      url: "#",
+      url: "/leads",
       icon: MagnetIcon,
         },
         {
@@ -148,7 +148,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
 
   return (
     <>
-      <Sidebar variant="inset">
+      <Sidebar variant="inset" suppressHydrationWarning>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
