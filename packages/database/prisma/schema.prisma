@@ -75,6 +75,7 @@ model OrganizationMember {
 
   @@map("organization_members")
   @@unique([userId, orgId])
+  @@index([orgId])
 }
 
 model Lead {
