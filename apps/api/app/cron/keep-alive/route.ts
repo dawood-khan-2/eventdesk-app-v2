@@ -1,17 +1,22 @@
 import { database } from "@repo/database";
 
 export const GET = async () => {
-  const newPage = await database.page.create({
-    data: {
-      name: "cron-temp",
-    },
-  });
+  try {
+    const newCheck = await database.healthCheck.create({
+      data: {
+        type: "cron",
+      },
+    });
 
-  await database.page.delete({
-    where: {
-      id: newPage.id,
-    },
-  });
+    await database.healthCheck.delete({
+      where: {
+        id: newCheck.id,
+      },
+    });
 
-  return new Response("OK", { status: 200 });
+    return new Response("OK", { status: 200 });
+  } catch (error) {
+    console.error("Keep-alive health check failed:", error);
+    return new Response("Health check failed", { status: 500 });
+  }
 };
