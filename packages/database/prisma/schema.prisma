@@ -13,11 +13,12 @@ datasource db {
   relationMode = "prisma"
 }
 
-// This is a stub model.
-// Delete it and add your own Prisma models.
-model Page {
-  id   Int    @id @default(autoincrement())
-  name String
+model HealthCheck {
+  id          String   @id @default(cuid())
+  type        String   // "cron", "manual", "automated"
+  createdAt   DateTime @default(now())
+  
+  @@map("health_checks")
 }
 
 model User {
