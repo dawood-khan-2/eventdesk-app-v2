@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/design-system/components/ui/card";
+import { Badge } from "@repo/design-system/components/ui/badge";
 import type { LeadStatus } from "@repo/database";
 import { cn } from "@repo/design-system/lib/utils";
 
@@ -26,33 +26,30 @@ export function LeadStatsCards({ stats, selectedStatus, onStatusClick }: LeadSta
   const statusKeys = Object.keys(statusConfig) as LeadStatus[];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-      {/* Status Cards */}
-      {statusKeys.map((status) => {
-        const config = statusConfig[status];
-        const count = stats.byStatus[status] || 0;
-        const isSelected = selectedStatus === status;
+    <div className="overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 min-w-max">
+        {/* Status Badges */}
+        {statusKeys.map((status) => {
+          const config = statusConfig[status];
+          const count = stats.byStatus[status] || 0;
+          const isSelected = selectedStatus === status;
 
-        return (
-          <Card
-            key={status}
-            className={cn(
-              "cursor-pointer transition-colors hover:bg-accent",
-              isSelected && "border-primary"
-            )}
-            onClick={() => onStatusClick(isSelected ? undefined : status)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5">
-              <CardTitle className={cn("text-xs font-medium", config.color)}>
-                {config.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-2">
-              <div className="text-xl font-bold">{count}</div>
-            </CardContent>
-          </Card>
-        );
-      })}
+          return (
+            <Badge
+              key={status}
+              variant={isSelected ? "default" : "outline"}
+              className={cn(
+                "cursor-pointer px-3 py-1.5 text-sm transition-colors hover:bg-accent whitespace-nowrap",
+                isSelected && "border-primary",
+                config.color
+              )}
+              onClick={() => onStatusClick(isSelected ? undefined : status)}
+            >
+              <span className="font-light">{config.label}</span> <span className="font-bold">{count}</span>
+            </Badge>
+          );
+        })}
+      </div>
     </div>
   );
 }
