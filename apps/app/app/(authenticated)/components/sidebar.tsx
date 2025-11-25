@@ -9,19 +9,10 @@ import {
   CollapsibleTrigger,
 } from "@repo/design-system/components/ui/collapsible";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@repo/design-system/components/ui/dropdown-menu";
-import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -63,59 +54,45 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/",
       icon: LayoutDashboardIcon,
       isActive: true,
-      // items: [
-      //   {
-      //     title: "History",
-      //     url: "#",
-      //   },
-      //   {
-      //     title: "Starred",
-      //     url: "#",
-      //   },
-      //   {
-      //     title: "Settings",
-      //     url: "#",
-      //   },
-      // ],
-        },
-        {
+    },
+    {
       title: "Events",
-          url: "#",
+      url: "#",
       icon: CalendarDaysIcon,
-        },
-        {
+    },
+    {
       title: "Budget",
-          url: "#",
+      url: "#",
       icon: CalculatorIcon,
-        },
-        {
+    },
+    {
       title: "Clients",
-          url: "#",
+      url: "#",
       icon: ContactIcon,
-        },
+    },
     {
       title: "Leads",
       url: "/leads",
       icon: MagnetIcon,
-        },
-        {
+    },
+    {
       title: "Invoices",
-          url: "#",
+      url: "#",
       icon: FileTextIcon,
-        },
-        {
+    },
+    {
       title: "Bills",
-          url: "#",
+      url: "#",
       icon: ReceiptIcon,
-        },
-        {
+    },
+    {
       title: "Vendors",
-          url: "#",
+      url: "#",
       icon: StoreIcon,
-        },
+    },
     {
       title: "Settings",
       url: "#",
@@ -145,9 +122,16 @@ const data = {
 export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
   const sidebar = useSidebar();
 
+  const handleLinkClick = () => {
+    // Close mobile sidebar on navigation
+    if (sidebar.isMobile) {
+      sidebar.setOpenMobile(false);
+    }
+  };
+
   return (
     <>
-      <Sidebar variant="inset" suppressHydrationWarning>
+      <Sidebar variant="inset" collapsible="icon" suppressHydrationWarning>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -167,7 +151,6 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            {/* <SidebarGroupLabel>Platform</SidebarGroupLabel> */}
             <SidebarMenu>
               {data.navMain.map((item) => (
                 <Collapsible
@@ -177,7 +160,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                 >
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip={item.title}>
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={handleLinkClick}>
                         <item.icon />
                         <span>{item.title}</span>
                       </Link>
@@ -195,7 +178,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                             {item.items?.map((subItem) => (
                               <SidebarMenuSubItem key={subItem.title}>
                                 <SidebarMenuSubButton asChild>
-                                  <Link href={subItem.url}>
+                                  <Link href={subItem.url} onClick={handleLinkClick}>
                                     <span>{subItem.title}</span>
                                   </Link>
                                 </SidebarMenuSubButton>
@@ -210,70 +193,6 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
               ))}
             </SidebarMenu>
           </SidebarGroup>
-          {/* <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel>Projects</SidebarGroupLabel>
-            <SidebarMenu>
-              {data.projects.map((item) => (
-                <SidebarMenuItem key={item.name}>
-                  <SidebarMenuButton asChild>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <SidebarMenuAction showOnHover>
-                        <MoreHorizontalIcon />
-                        <span className="sr-only">More</span>
-                      </SidebarMenuAction>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="w-48"
-                      side="bottom"
-                    >
-                      <DropdownMenuItem>
-                        <FolderIcon className="text-muted-foreground" />
-                        <span>View Project</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <ShareIcon className="text-muted-foreground" />
-                        <span>Share Project</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>
-                        <Trash2Icon className="text-muted-foreground" />
-                        <span>Delete Project</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </SidebarMenuItem>
-              ))}
-              <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <MoreHorizontalIcon />
-                  <span>More</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroup>
-          <SidebarGroup className="mt-auto">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {data.navSecondary.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup> */}
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
