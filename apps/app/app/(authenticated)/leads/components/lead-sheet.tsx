@@ -89,17 +89,8 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
 
   const handleCancelEdit = () => {
     if (lead) {
-      // Reset to original values and switch back to view mode
-      form.reset({
-        name: lead.name,
-        email: lead.email || "",
-        phone: lead.phone || "",
-        company: lead.company || "",
-        address: lead.address || "",
-        status: lead.status,
-        notes: lead.notes || "",
-      });
-      setMode("view");
+      // Close the sheet when canceling edit
+      handleOpenChange(false);
     }
   };
 
