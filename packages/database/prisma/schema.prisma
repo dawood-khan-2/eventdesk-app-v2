@@ -56,6 +56,7 @@ model Organization {
   // Relationships
   members     OrganizationMember[]
   leads       Lead[]
+  clients     Client[]
 
   @@map("organizations")
   @@index([clerkId])
@@ -114,4 +115,34 @@ enum LeadStatus {
   FOLLOW_UP
   CONVERTED
   LOST
+}
+
+model Client {
+  tenantId      String
+  id            String   @id @default(cuid())
+  
+  // Original Lead reference (optional - for history tracking)
+  leadId        String?  // Reference to the original lead
+  
+  // Client Info (same as Lead)
+  name          String
+  email         String?
+  phone         String?
+  company       String?
+  address       String?
+
+  // Client-specific fields
+  
+  
+  // Additional Info
+  notes          String?
+  
+  // Audit fields
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  organization  Organization @relation(fields: [tenantId], references: [id])
+  
+  @@map("clients")
+  @@index([tenantId])
 }
