@@ -45,12 +45,22 @@ type GlobalSidebarProperties = {
   readonly children: ReactNode;
 };
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
+type NavItem = {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isActive?: boolean;
+  items?: {
+    title: string;
+    url: string;
+  }[];
+};
+
+type SidebarData = {
+  navMain: NavItem[];
+};
+
+const data: SidebarData = {
   navMain: [
     {
       title: "Dashboard",
@@ -64,8 +74,8 @@ const data = {
       icon: CalendarDaysIcon,
     },
     {
-      title: "Budget",
-      url: "#",
+      title: "Estimates",
+      url: "/estimates",
       icon: CalculatorIcon,
     },
     {
@@ -95,26 +105,8 @@ const data = {
     },
     {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: Settings2Icon,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
     },
   ],
 };

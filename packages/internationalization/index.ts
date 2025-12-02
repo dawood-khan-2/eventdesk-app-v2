@@ -35,3 +35,5 @@ export const getDictionary = async (locale: string): Promise<Dictionary> => {
     return dictionaries.en();
   }
 };
+
+export * from "./currencies";

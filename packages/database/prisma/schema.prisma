@@ -49,6 +49,9 @@ model Organization {
   name        String
   imageUrl    String?
 
+  // Settings
+  currencyCode String  @default("USD") // ISO 4217 currency code (e.g., USD, EUR, GBP)
+
   // Audit fields
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -57,6 +60,7 @@ model Organization {
   members     OrganizationMember[]
   leads       Lead[]
   clients     Client[]
+  estimates   Estimate[]
 
   @@map("organizations")
   @@index([clerkId])
@@ -102,6 +106,7 @@ model Lead {
 
   // Relations
   organization  Organization @relation(fields: [tenantId], references: [id])
+  estimates     Estimate[]
 
   @@map("leads")
   @@index([tenantId])  // needed for RLS performance
@@ -142,7 +147,57 @@ model Client {
   updatedAt     DateTime @updatedAt
   
   organization  Organization @relation(fields: [tenantId], references: [id])
+  estimates       Estimate[]
   
   @@map("clients")
   @@index([tenantId])
 }
+
+model Estimate {
+  tenantId        String
+  id              String        @id @default(cuid())
+
+  leadId          String?       // Optional reference to Lead
+  clientId        String?       // Optional reference to Client
+
+  title           String
+  status          EstimateStatus @default(DRAFT)
+  eventName       String?
+  eventVenue      String?
+  eventStartDate  DateTime?
+  eventEndDate    DateTime?
+
+  lineItems       Json          /* service category, service description, quantity, unit, tax, rate, amount */
+  discount        Float?        @default(0.0)
+
+  // Audit fields
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  organization    Organization  @relation(fields: [tenantId], references: [id])
+  lead            Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  client          Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("estimates")
+  @@index([tenantId])
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model ServiceCategories {
+  tenantId      String
+  id            String   @id @default(cuid())
+
+  name          String
+
+  @@map("service_categories")
+  @@index([tenantId])
+}
+
