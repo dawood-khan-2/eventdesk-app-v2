@@ -211,12 +211,20 @@ export function EstimatesTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(estimate)}>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(estimate);
+                        }}
+                      >
                         <EditIcon className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => handleDelete(estimate)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(estimate);
+                        }}
                         className="text-red-600"
                       >
                         <TrashIcon className="mr-2 h-4 w-4" />

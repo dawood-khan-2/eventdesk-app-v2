@@ -380,37 +380,46 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {estimate?.lineItems?.map((item: LineItem, index: number) => (
-                    <div key={item.id} className="grid grid-cols-12 gap-3 pb-3 border-b last:border-0">
-                      <div className="col-span-3">
+                    <div key={item.id} className="space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3 pb-3 border-b last:border-0">
+                      <div className="md:col-span-3">
                         <label className="text-sm font-medium text-muted-foreground">Service Category</label>
                         <p className="mt-1 text-sm">
                           {serviceCategories.find(cat => cat.id === item.serviceCategoryId)?.name || "—"}
                         </p>
                       </div>
 
-                      <div className="col-span-3">
+                      <div className="md:col-span-3">
                         <label className="text-sm font-medium text-muted-foreground">Description</label>
                         <p className="mt-1 text-sm">{item.description}</p>
                       </div>
 
-                      <div className="col-span-1">
-                        <label className="text-sm font-medium text-muted-foreground">Qty</label>
-                        <p className="mt-1 text-sm">{item.quantity}</p>
+                      <div className="grid grid-cols-2 gap-3 md:col-span-2 md:grid-cols-1">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Qty</label>
+                          <p className="mt-1 text-sm">{item.quantity}</p>
+                        </div>
+
+                        <div className="md:hidden">
+                          <label className="text-sm font-medium text-muted-foreground">Unit</label>
+                          <p className="mt-1 text-sm">{item.unit || "—"}</p>
+                        </div>
                       </div>
 
-                      <div className="col-span-1">
+                      <div className="hidden md:block md:col-span-1">
                         <label className="text-sm font-medium text-muted-foreground">Unit</label>
                         <p className="mt-1 text-sm">{item.unit || "—"}</p>
                       </div>
 
-                      <div className="col-span-2">
-                        <label className="text-sm font-medium text-muted-foreground">Rate</label>
-                        <p className="mt-1 text-sm">{currency.symbol}{item.rate.toFixed(2)}</p>
-                      </div>
+                      <div className="grid grid-cols-2 gap-3 md:col-span-4 md:grid-cols-2">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Rate</label>
+                          <p className="mt-1 text-sm">{currency.symbol}{item.rate.toFixed(2)}</p>
+                        </div>
 
-                      <div className="col-span-2">
-                        <label className="text-sm font-medium text-muted-foreground">Tax</label>
-                        <p className="mt-1 text-sm">{item.tax}%</p>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Tax</label>
+                          <p className="mt-1 text-sm">{item.tax}%</p>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -418,7 +427,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
               </Card>
 
               {/* Discount and Summary */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Discount</label>
                   <p className="mt-1">{estimate?.discount || 0}%</p>
@@ -662,8 +671,8 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {formData.lineItems.map((item: LineItem, index: number) => (
-                    <div key={item.id} className="grid grid-cols-12 gap-3 items-end">
-                      <div className="col-span-3">
+                    <div key={item.id} className="space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3 md:items-end border-b pb-4 last:border-0 md:border-0 md:pb-0">
+                      <div className="md:col-span-3">
                         <label className="text-sm font-medium">Service Category</label>
                         <Select 
                           value={item.serviceCategoryId}
@@ -682,7 +691,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                         </Select>
                       </div>
 
-                      <div className="col-span-3">
+                      <div className="md:col-span-3">
                         <label className="text-sm font-medium">Description</label>
                         <Input 
                           placeholder="Service description..." 
@@ -691,18 +700,29 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                         />
                       </div>
 
-                      <div className="col-span-1">
-                        <label className="text-sm font-medium">Qty</label>
-                        <Input 
-                          type="number" 
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateLineItem(index, 'quantity', Number(e.target.value))}
-                          className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
+                      <div className="grid grid-cols-2 gap-3 md:col-span-2 md:grid-cols-1">
+                        <div>
+                          <label className="text-sm font-medium">Qty</label>
+                          <Input 
+                            type="number" 
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateLineItem(index, 'quantity', Number(e.target.value))}
+                            className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
+                        </div>
+
+                        <div className="md:hidden">
+                          <label className="text-sm font-medium">Unit</label>
+                          <Input 
+                            placeholder="hrs..." 
+                            value={item.unit}
+                            onChange={(e) => updateLineItem(index, 'unit', e.target.value)}
+                          />
+                        </div>
                       </div>
 
-                      <div className="col-span-1">
+                      <div className="hidden md:block md:col-span-1">
                         <label className="text-sm font-medium">Unit</label>
                         <Input 
                           placeholder="hrs..." 
@@ -711,32 +731,34 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                         />
                       </div>
 
-                      <div className="col-span-2">
-                        <label className="text-sm font-medium">Rate ({currency.symbol})</label>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          step="0.01"
-                          value={item.rate}
-                          onChange={(e) => updateLineItem(index, 'rate', Number(e.target.value))}
-                          className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
+                      <div className="grid grid-cols-2 gap-3 md:col-span-3 md:grid-cols-2">
+                        <div className="md:col-span-1">
+                          <label className="text-sm font-medium">Rate ({currency.symbol})</label>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            step="0.01"
+                            value={item.rate}
+                            onChange={(e) => updateLineItem(index, 'rate', Number(e.target.value))}
+                            className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
+                        </div>
+
+                        <div className="md:col-span-1">
+                          <label className="text-sm font-medium">Tax (%)</label>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={item.tax}
+                            onChange={(e) => updateLineItem(index, 'tax', Number(e.target.value))}
+                            className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
+                        </div>
                       </div>
 
-                      <div className="col-span-1">
-                        <label className="text-sm font-medium">Tax (%)</label>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          value={item.tax}
-                          onChange={(e) => updateLineItem(index, 'tax', Number(e.target.value))}
-                          className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
-                      </div>
-
-                      <div className="col-span-1 flex flex-col items-center justify-end">
+                      <div className="flex justify-end md:col-span-1 md:flex-col md:items-center md:justify-end">
                         <Button
                           type="button"
                           variant="ghost"
@@ -754,7 +776,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
               </Card>
 
               {/* Discount and Summary */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Discount (%)</label>
                   <Input 
