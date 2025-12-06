@@ -61,6 +61,7 @@ model Organization {
   leads       Lead[]
   clients     Client[]
   estimates   Estimate[]
+  events      Event[]
 
   @@map("organizations")
   @@index([clerkId])
@@ -147,7 +148,8 @@ model Client {
   updatedAt     DateTime @updatedAt
   
   organization  Organization @relation(fields: [tenantId], references: [id])
-  estimates       Estimate[]
+  estimates     Estimate[]
+  events        Event[]
   
   @@map("clients")
   @@index([tenantId])
@@ -159,6 +161,7 @@ model Estimate {
 
   leadId          String?       // Optional reference to Lead
   clientId        String?       // Optional reference to Client
+  eventId         String?       // Optional reference to Event
 
   title           String
   status          EstimateStatus @default(DRAFT)
@@ -178,6 +181,7 @@ model Estimate {
   organization    Organization  @relation(fields: [tenantId], references: [id])
   lead            Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
   client          Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  event           Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("estimates")
   @@index([tenantId])
@@ -201,3 +205,23 @@ model ServiceCategories {
   @@index([tenantId])
 }
 
+model Event {
+  tenantId      String
+  id            String   @id @default(cuid())
+
+  clientId      String
+
+  name          String
+  venue         String?
+  description   String?
+  startDate     DateTime
+  endDate       DateTime
+
+   // Relations
+  organization    Organization  @relation(fields: [tenantId], references: [id])
+  client          Client        @relation(fields: [clientId], references: [id])
+  estimates       Estimate[]
+
+  @@map("events")
+  @@index([tenantId])
+}
