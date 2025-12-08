@@ -1,9 +1,10 @@
 "use server";
 
 import { auth } from "@repo/auth/server";
-import { database, multiTenantDb } from "@repo/database";
+import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getInternalOrgId } from "../lib/auth-helpers";
 
 // Line Item Schema
 const lineItemSchema = z.object({
@@ -46,19 +47,6 @@ const updateEstimateSchema = z.object({
 export type CreateEstimateInput = z.infer<typeof createEstimateSchema>;
 export type UpdateEstimateInput = z.infer<typeof updateEstimateSchema>;
 export type LineItem = z.infer<typeof lineItemSchema>;
-
-async function getInternalOrgId(clerkOrgId: string) {
-  const org = await database.organization.findUnique({
-    where: { clerkId: clerkOrgId },
-    select: { id: true },
-  });
-
-  if (!org) {
-    throw new Error("Organization not found");
-  }
-
-  return org.id;
-}
 
 export async function createEstimate(input: CreateEstimateInput) {
   try {
@@ -306,58 +294,6 @@ export async function getEstimatesStats() {
   } catch (error) {
     console.error("Failed to get estimates stats:", error);
     return { error: "Failed to get estimates stats" };
-  }
-}
-
-// Helper function to get clients for dropdown
-export async function getClientsForEstimate() {
-  try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
-
-    const clients = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
-      prisma.client.findMany({
-        where: { tenantId: internalOrgId },
-        select: { id: true, name: true, email: true },
-        orderBy: { name: "asc" },
-      })
-    );
-
-    return { data: clients };
-  } catch (error) {
-    console.error("Failed to get clients:", error);
-    return { error: "Failed to get clients" };
-  }
-}
-
-// Helper function to get leads for dropdown
-export async function getLeadsForEstimate() {
-  try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
-
-    const leads = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
-      prisma.lead.findMany({
-        where: { tenantId: internalOrgId },
-        select: { id: true, name: true, email: true },
-        orderBy: { name: "asc" },
-      })
-    );
-
-    return { data: leads };
-  } catch (error) {
-    console.error("Failed to get leads:", error);
-    return { error: "Failed to get leads" };
   }
 }
 
