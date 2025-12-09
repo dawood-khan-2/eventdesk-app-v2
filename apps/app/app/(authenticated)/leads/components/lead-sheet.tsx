@@ -46,7 +46,6 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
   const isCreating = mode === "create";
 
   const form = useForm<LeadFormValues>({
-    // @ts-expect-error - Zod version mismatch between react-hook-form resolver expectations
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
       name: lead?.name || "",

@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
-    "next": "16.0.0"
+    "next": "16.0.7"
   },
   "dependencies": {
     "@next/bundle-analyzer": "16.0.0",
@@ -17,4 +17,3 @@
     "zod": "^3.23.8"
   }
 }
-
