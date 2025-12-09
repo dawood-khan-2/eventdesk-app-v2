@@ -44,7 +44,6 @@ export function ClientSheet({ open, onOpenChange, client, mode: initialMode, onS
   const isCreating = mode === "create";
 
   const form = useForm<ClientFormValues>({
-    // @ts-expect-error - Zod version mismatch between react-hook-form resolver expectations
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
       name: client?.name || "",
