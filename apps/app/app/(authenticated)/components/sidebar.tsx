@@ -70,7 +70,7 @@ const data: SidebarData = {
     },
     {
       title: "Events",
-      url: "#",
+      url: "/events",
       icon: CalendarDaysIcon,
     },
     {

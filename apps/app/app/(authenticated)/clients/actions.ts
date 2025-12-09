@@ -1,10 +1,11 @@
 "use server";
 
 import { auth } from "@repo/auth/server";
-import { database, multiTenantDb } from "@repo/database";
+import { multiTenantDb } from "@repo/database";
 import type { Client } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getInternalOrgId } from "../lib/auth-helpers";
 
 /**
  * Validation Schemas
@@ -29,22 +30,6 @@ const searchClientsSchema = z.object({
   cursor: z.string().optional(),
   offset: z.number().min(0).optional(),
 });
-
-/**
- * Helper to get the internal organization ID from Clerk's orgId
- */
-async function getInternalOrgId(clerkOrgId: string): Promise<string> {
-  const org = await database.organization.findUnique({
-    where: { clerkId: clerkOrgId },
-    select: { id: true },
-  });
-
-  if (!org) {
-    throw new Error("Organization not found");
-  }
-
-  return org.id;
-}
 
 /**
  * Create a new client

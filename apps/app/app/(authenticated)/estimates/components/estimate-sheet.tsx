@@ -33,7 +33,9 @@ import {
   CommandList,
 } from "@repo/design-system/components/ui/command";
 import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
-import { createEstimate, updateEstimate, getClientsForEstimate, getLeadsForEstimate } from "../actions";
+import { createEstimate, updateEstimate } from "../actions";
+import { getClients } from "../../clients/actions";
+import { getLeads } from "../../leads/actions";
 import { toast } from "sonner";
 import { getCurrencyConfig } from "@repo/internationalization/currencies";
 import { cn } from "@repo/design-system/lib/utils";
@@ -140,12 +142,13 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
   useEffect(() => {
     const fetchData = async () => {
       const [leadsResult, clientsResult] = await Promise.all([
-        getLeadsForEstimate(),
-        getClientsForEstimate(),
+        getLeads(),
+        getClients(),
       ]);
       
       if (leadsResult.data) {
-        setLeads(leadsResult.data);
+        // Filter out CONVERTED leads
+        setLeads(leadsResult.data.filter((lead: any) => lead.status !== "CONVERTED"));
       }
       
       if (clientsResult.data) {
