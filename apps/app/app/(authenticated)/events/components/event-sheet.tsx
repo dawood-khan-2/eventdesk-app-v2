@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/design-system/components/ui/select";
-import { CalendarIcon, Check, ChevronsUpDown, Pencil } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Pencil, ArrowRight } from "lucide-react";
 import { createEvent, updateEvent, getEstimatesForLeadOrClient } from "../actions";
 import { getClients } from "../../clients/actions";
 import { getLeads } from "../../leads/actions";
@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { useTransition, useEffect, useState } from "react";
 import { cn } from "@repo/design-system/lib/utils";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
 interface EventSheetProps {
   open: boolean;
@@ -46,6 +47,7 @@ interface EventSheetProps {
 export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuccess }: EventSheetProps) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState(initialMode);
+  const router = useRouter();
   
   // Form state
   const [name, setName] = useState("");
@@ -579,6 +581,14 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
             <SheetFooter className="mt-6 flex-col gap-2 sm:flex-col">
               {isViewing && event && (
                 <>
+                  <Button 
+                    type="button" 
+                    className="w-full" 
+                    onClick={() => router.push(`/events/${event.id}`)}
+                  >
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                    Manage
+                  </Button>
                   <Button type="button" variant="outline" className="w-full" onClick={handleEdit}>
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit
