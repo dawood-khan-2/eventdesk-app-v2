@@ -18,10 +18,11 @@ import {
   TableRow,
 } from "@repo/design-system/components/ui/table";
 import { Skeleton } from "@repo/design-system/components/ui/skeleton";
-import { Pencil, MoreVertical } from "lucide-react";
+import { Pencil, MoreVertical, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@repo/design-system/lib/utils";
 import { format, isPast, isFuture, isWithinInterval } from "date-fns";
+import { useRouter } from "next/navigation";
 
 interface EventsTableProps {
   events: any[];
@@ -50,6 +51,7 @@ export function EventsTable({
   onEventClick,
   onEditClick,
 }: EventsTableProps) {
+  const router = useRouter();
 
   if (isLoading) {
     return (
@@ -159,6 +161,15 @@ export function EventsTable({
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/events/${event.id}`);
+                          }}
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2" />
+                          Manage
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -215,17 +226,30 @@ export function EventsTable({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditClick(event);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditClick(event);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/events/${event.id}`);
+                        }}
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        <span className="sr-only">Manage</span>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
