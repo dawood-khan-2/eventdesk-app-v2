@@ -225,7 +225,75 @@ model Event {
   organization    Organization  @relation(fields: [tenantId], references: [id])
   client          Client        @relation(fields: [clientId], references: [id])
   estimates       Estimate[]
+  tasks           Task[]
 
   @@map("events")
+  @@index([tenantId])
+}
+
+model Task {
+  tenantId      String
+  id            String   @id @default(cuid())
+  eventId       String
+  parentTaskId  String?
+
+  title         String
+  description   String?
+  dueDate       DateTime?
+  priority      TaskPriority?
+  status        TaskStatus      @default(TO_DO)
+  group         TaskGroup       @default(PRE_EVENT)
+
+  // Audit fields
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  event         Event       @relation(fields: [eventId], references: [id])
+  parentTask    Task?       @relation("TaskToSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks      Task[]      @relation("TaskToSubtasks")
+  checklists    Checklist[]
+
+  @@map("tasks")
+  @@index([tenantId])
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TO_DO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskGroup {
+  PRE_EVENT
+  ON_EVENT
+  POST_EVENT
+}
+
+
+model Checklist{
+  tenantId      String
+  id            String   @id @default(cuid())
+  taskId        String
+
+  title         String
+  done          Boolean    @default(false)
+
+  // Audit fields
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  task         Task       @relation(fields: [taskId], references: [id])
+
+  @@map("checklists")
   @@index([tenantId])
 }
