@@ -226,6 +226,7 @@ model Event {
   client          Client        @relation(fields: [clientId], references: [id])
   estimates       Estimate[]
   tasks           Task[]
+  itineraries     Itinerary[]
 
   @@map("events")
   @@index([tenantId])
@@ -295,5 +296,24 @@ model Checklist{
   task         Task       @relation(fields: [taskId], references: [id])
 
   @@map("checklists")
+  @@index([tenantId])
+}
+
+model Itinerary{
+  tenantId      String
+  id            String   @id @default(cuid())
+  eventId       String
+
+  title         String
+  done          Boolean    @default(false)
+
+  // Audit fields
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  event         Event       @relation(fields: [eventId], references: [id])
+
+  @@map("itineraries")
   @@index([tenantId])
 }
