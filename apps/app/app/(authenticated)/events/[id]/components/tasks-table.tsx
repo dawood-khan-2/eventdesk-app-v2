@@ -28,6 +28,10 @@ interface Task {
     title: string;
     done: boolean;
   }>;
+  subtasks?: Array<{
+    id: string;
+    status: "TO_DO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  }>;
 }
 
 interface TasksTableProps {
@@ -75,6 +79,13 @@ const TYPE_LABELS = {
 function getChecklistStats(checklists: Task["checklists"]) {
   const total = checklists.length;
   const completed = checklists.filter((c) => c.done).length;
+  return { completed, total };
+}
+
+function getSubtaskStats(subtasks?: Task["subtasks"]) {
+  if (!subtasks) return { completed: 0, total: 0 };
+  const total = subtasks.length;
+  const completed = subtasks.filter((s) => s.status === "COMPLETED").length;
   return { completed, total };
 }
 
@@ -152,7 +163,8 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
       {/* Mobile Card View */}
       <div className="flex flex-col gap-3 md:hidden">
         {tasks.map((task) => {
-          const { completed, total } = getChecklistStats(task.checklists);
+          const { completed: checklistCompleted, total: checklistTotal } = getChecklistStats(task.checklists);
+          const { completed: subtaskCompleted, total: subtaskTotal } = getSubtaskStats(task.subtasks);
           return (
             <Card 
               key={task.id}
@@ -164,9 +176,11 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
               <CardContent className="p-4">
                 <div className="mb-3">
                   <h3 className="font-medium mb-1">{task.title}</h3>
-                  {total > 0 && (
+                  {(subtaskTotal > 0 || checklistTotal > 0) && (
                     <p className="text-xs text-muted-foreground">
-                      Checklists: {completed}/{total}
+                      {subtaskTotal > 0 && `Subtasks: ${subtaskCompleted}/${subtaskTotal}`}
+                      {subtaskTotal > 0 && checklistTotal > 0 && " • "}
+                      {checklistTotal > 0 && `Checklists: ${checklistCompleted}/${checklistTotal}`}
                     </p>
                   )}
                 </div>
@@ -203,7 +217,8 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
           </TableHeader>
           <TableBody>
             {tasks.map((task) => {
-              const { completed, total } = getChecklistStats(task.checklists);
+              const { completed: checklistCompleted, total: checklistTotal } = getChecklistStats(task.checklists);
+              const { completed: subtaskCompleted, total: subtaskTotal } = getSubtaskStats(task.subtasks);
               return (
                 <TableRow 
                   key={task.id}
@@ -215,9 +230,11 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
                   <TableCell className="w-[40%]">
                     <div>
                       <p className="font-medium">{task.title}</p>
-                      {total > 0 && (
+                      {(subtaskTotal > 0 || checklistTotal > 0) && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Checklists: {completed}/{total}
+                          {subtaskTotal > 0 && `Subtasks: ${subtaskCompleted}/${subtaskTotal}`}
+                          {subtaskTotal > 0 && checklistTotal > 0 && " • "}
+                          {checklistTotal > 0 && `Checklists: ${checklistCompleted}/${checklistTotal}`}
                         </p>
                       )}
                     </div>
