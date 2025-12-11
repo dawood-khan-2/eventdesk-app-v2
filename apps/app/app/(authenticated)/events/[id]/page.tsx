@@ -3,7 +3,7 @@
 import { notFound, useParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
 import { getEvent } from "../actions";
-import { getTasks } from "./actions";
+import { getTasks, getItineraries } from "./actions";
 import { Header } from "../../components/header";
 import { EventOverviewCard } from "./components/event-overview-card";
 import { EventSwitcher } from "./components/event-switcher";
@@ -11,6 +11,8 @@ import { EventSheet } from "../components/event-sheet";
 import { TaskSheet } from "./components/task-sheet";
 import { TaskEditDialog } from "./components/task-edit-dialog";
 import { TasksTable } from "./components/tasks-table";
+import { ItinerarySheet } from "./components/itinerary-sheet";
+import { ItineraryTimeline } from "./components/itinerary-timeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/design-system/components/ui/tabs";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -32,6 +34,7 @@ export default function EventPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
+  const [isItinerarySheetOpen, setIsItinerarySheetOpen] = useState(false);
   const [tasksRefreshKey, setTasksRefreshKey] = useState(0);
   
   // Task edit dialog state
@@ -47,6 +50,12 @@ export default function EventPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Itinerary state
+  const [itineraries, setItineraries] = useState<any[]>([]);
+  const [isLoadingItineraries, setIsLoadingItineraries] = useState(false);
+  const [itinerariesRefreshKey, setItinerariesRefreshKey] = useState(0);
+  const [itinerarySearchQuery, setItinerarySearchQuery] = useState("");
 
   // Load event data
   useEffect(() => {
@@ -76,6 +85,21 @@ export default function EventPage() {
 
     loadTasks();
   }, [id, tasksRefreshKey]);
+
+  // Load itineraries data
+  useEffect(() => {
+    const loadItineraries = async () => {
+      setIsLoadingItineraries(true);
+      const result = await getItineraries(id);
+      
+      if (result.data) {
+        setItineraries(result.data);
+      }
+      setIsLoadingItineraries(false);
+    };
+
+    loadItineraries();
+  }, [id, itinerariesRefreshKey]);
 
   const handleSheetSuccess = () => {
     setIsSheetOpen(false);
@@ -120,6 +144,13 @@ export default function EventPage() {
   // Handle task edit success
   const handleTaskEditSuccess = () => {
     setTasksRefreshKey(prev => prev + 1);
+  };
+
+  // Handle itinerary sheet success
+  const handleItinerarySheetSuccess = () => {
+    setIsItinerarySheetOpen(false);
+    // Trigger itineraries refresh
+    setItinerariesRefreshKey(prev => prev + 1);
   };
 
   // Filter tasks by search query
@@ -247,12 +278,37 @@ export default function EventPage() {
           </TabsContent>
 
           <TabsContent value="itinerary" className="space-y-4 mt-6">
-            <div className="rounded-lg border p-8">
-              <h2 className="text-lg font-semibold mb-2">Itinerary</h2>
-              <p className="text-sm text-muted-foreground">
-                Plan and manage the event schedule and timeline.
-              </p>
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 mb-4">
+              <div className="relative flex-1 sm:flex-initial sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search itinerary..."
+                  value={itinerarySearchQuery}
+                  onChange={(e) => setItinerarySearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button onClick={() => setIsItinerarySheetOpen(true)} className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Itinerary
+              </Button>
             </div>
+            
+            {isLoadingItineraries ? (
+              <div className="rounded-lg border p-8">
+                <p className="text-sm text-muted-foreground">Loading itinerary...</p>
+              </div>
+            ) : (
+              <ItineraryTimeline
+                itineraries={itineraries.filter(item => 
+                  item.title.toLowerCase().includes(itinerarySearchQuery.toLowerCase())
+                )}
+                eventStartDate={event?.startDate || new Date()}
+                eventEndDate={event?.endDate || new Date()}
+                onRefresh={() => setItinerariesRefreshKey(prev => prev + 1)}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="services" className="space-y-4 mt-6">
@@ -315,6 +371,16 @@ export default function EventPage() {
         onSubtaskClick={handleTaskClick}
         onParentTaskClick={handleTaskClick}
         onSuccess={handleTaskEditSuccess}
+      />
+
+      {/* Itinerary Sheet for bulk adding itineraries */}
+      <ItinerarySheet
+        open={isItinerarySheetOpen}
+        onOpenChange={setIsItinerarySheetOpen}
+        eventId={id}
+        eventStartDate={event?.startDate ? new Date(event.startDate) : new Date()}
+        eventEndDate={event?.endDate ? new Date(event.endDate) : new Date()}
+        onSuccess={handleItinerarySheetSuccess}
       />
 
       {/* Event Switcher */}

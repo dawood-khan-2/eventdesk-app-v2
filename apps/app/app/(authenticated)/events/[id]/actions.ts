@@ -469,3 +469,240 @@ export async function createChecklistItem(taskId: string, title: string) {
     return { error: "Failed to create checklist item" };
   }
 }
+
+/**
+ * Validation Schema for Itinerary Creation
+ */
+const createItinerariesSchema = z.object({
+  eventId: z.string().cuid("Invalid event ID"),
+  items: z.array(z.object({
+    title: z.string().min(1, "Itinerary item title is required").max(255),
+    date: z.string(), // ISO date string with time
+  })).min(1, "At least one itinerary item is required"),
+});
+
+/**
+ * Create multiple itinerary items in bulk
+ */
+export async function createItineraries(
+  eventId: string,
+  items: Array<{ title: string; date: string }>
+) {
+  try {
+    const { orgId } = await auth();
+
+    if (!orgId) {
+      return { error: "Not authenticated" };
+    }
+
+    // Validate input
+    const validatedData = createItinerariesSchema.parse({ eventId, items });
+
+    // Get internal organization ID
+    const internalOrgId = await getInternalOrgId(orgId);
+
+    // Create itinerary items
+    const itineraries = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // Verify event exists and belongs to this organization
+      const event = await prisma.event.findUnique({
+        where: { id: validatedData.eventId },
+        select: { id: true },
+      });
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      // Create all itinerary items
+      const createdItems = await prisma.itinerary.createMany({
+        data: validatedData.items.map((item) => ({
+          tenantId: internalOrgId,
+          eventId: validatedData.eventId,
+          title: item.title,
+          date: new Date(item.date),
+        })),
+      });
+
+      return createdItems;
+    });
+
+    revalidatePath(`/events/${validatedData.eventId}`);
+    return { data: itineraries };
+  } catch (error) {
+    console.error("Failed to create itinerary items:", error);
+    
+    if (error instanceof z.ZodError) {
+      return { error: error.issues[0]?.message ?? "Invalid input" };
+    }
+
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to create itinerary items" };
+  }
+}
+
+/**
+ * Get all itineraries for an event, grouped by date
+ */
+export async function getItineraries(eventId: string) {
+  try {
+    const { orgId } = await auth();
+
+    if (!orgId) {
+      return { error: "Not authenticated" };
+    }
+
+    // Get internal organization ID
+    const internalOrgId = await getInternalOrgId(orgId);
+
+    // Fetch itineraries
+    const itineraries = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // Verify event exists and belongs to this organization
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { id: true },
+      });
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      // Get all itineraries for this event, ordered by date
+      return prisma.itinerary.findMany({
+        where: { eventId },
+        orderBy: { date: 'asc' },
+        select: {
+          id: true,
+          title: true,
+          date: true,
+          createdAt: true,
+        },
+      });
+    });
+
+    return { data: itineraries };
+  } catch (error) {
+    console.error("Failed to fetch itineraries:", error);
+    
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to fetch itineraries" };
+  }
+}
+
+/**
+ * Validation Schema for Itinerary Update
+ */
+const updateItinerarySchema = z.object({
+  id: z.string().cuid("Invalid itinerary ID"),
+  title: z.string().min(1, "Title is required").max(255).optional(),
+  date: z.string().optional(), // ISO date string
+});
+
+/**
+ * Update an itinerary item
+ */
+export async function updateItinerary(data: { id: string; title?: string; date?: string }) {
+  try {
+    const { orgId } = await auth();
+
+    if (!orgId) {
+      return { error: "Not authenticated" };
+    }
+
+    // Validate input
+    const validatedData = updateItinerarySchema.parse(data);
+
+    // Get internal organization ID
+    const internalOrgId = await getInternalOrgId(orgId);
+
+    // Update itinerary
+    const itinerary = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // Verify itinerary exists and belongs to this organization
+      const existing = await prisma.itinerary.findUnique({
+        where: { id: validatedData.id },
+        select: { id: true, eventId: true },
+      });
+
+      if (!existing) {
+        throw new Error("Itinerary item not found");
+      }
+
+      // Update itinerary
+      const updateData: any = {};
+      if (validatedData.title !== undefined) updateData.title = validatedData.title;
+      if (validatedData.date !== undefined) updateData.date = new Date(validatedData.date);
+
+      const updated = await prisma.itinerary.update({
+        where: { id: validatedData.id },
+        data: updateData,
+      });
+
+      revalidatePath(`/events/${existing.eventId}`);
+      return updated;
+    });
+
+    return { data: itinerary };
+  } catch (error) {
+    console.error("Failed to update itinerary:", error);
+    
+    if (error instanceof z.ZodError) {
+      return { error: error.issues[0]?.message ?? "Invalid input" };
+    }
+
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to update itinerary" };
+  }
+}
+
+/**
+ * Delete an itinerary item
+ */
+export async function deleteItinerary(id: string) {
+  try {
+    const { orgId } = await auth();
+
+    if (!orgId) {
+      return { error: "Not authenticated" };
+    }
+
+    // Get internal organization ID
+    const internalOrgId = await getInternalOrgId(orgId);
+
+    // Delete itinerary
+    await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // Verify itinerary exists and belongs to this organization
+      const existing = await prisma.itinerary.findUnique({
+        where: { id },
+        select: { id: true, eventId: true },
+      });
+
+      if (!existing) {
+        throw new Error("Itinerary item not found");
+      }
+
+      await prisma.itinerary.delete({
+        where: { id },
+      });
+
+      revalidatePath(`/events/${existing.eventId}`);
+    });
+
+    return { data: { success: true } };
+  } catch (error) {
+    console.error("Failed to delete itinerary:", error);
+    
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to delete itinerary" };
+  }
+}

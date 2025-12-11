@@ -305,7 +305,7 @@ model Itinerary{
   eventId       String
 
   title         String
-  done          Boolean    @default(false)
+  date          DateTime
 
   // Audit fields
   createdAt       DateTime      @default(now())
