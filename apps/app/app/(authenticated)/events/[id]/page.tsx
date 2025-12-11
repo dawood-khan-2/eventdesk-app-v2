@@ -3,11 +3,24 @@
 import { notFound, useParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
 import { getEvent } from "../actions";
+import { getTasks } from "./actions";
 import { Header } from "../../components/header";
 import { EventOverviewCard } from "./components/event-overview-card";
 import { EventSwitcher } from "./components/event-switcher";
 import { EventSheet } from "../components/event-sheet";
+import { TaskSheet } from "./components/task-sheet";
+import { TaskEditDialog } from "./components/task-edit-dialog";
+import { TasksTable } from "./components/tasks-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/design-system/components/ui/tabs";
+import { Button } from "@repo/design-system/components/ui/button";
+import { Input } from "@repo/design-system/components/ui/input";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@repo/design-system/components/ui/accordion";
+import { Plus, Search } from "lucide-react";
 
 export default function EventPage() {
   const params = useParams();
@@ -18,6 +31,22 @@ export default function EventPage() {
   const [notFoundError, setNotFoundError] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
+  const [tasksRefreshKey, setTasksRefreshKey] = useState(0);
+  
+  // Task edit dialog state
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isTaskEditOpen, setIsTaskEditOpen] = useState(false);
+  const [isSubtask, setIsSubtask] = useState(false);
+  
+  // Subtask creation state
+  const [parentTaskForCreation, setParentTaskForCreation] = useState<any>(null);
+  const [shouldReopenParentDialog, setShouldReopenParentDialog] = useState(false);
+  
+  // Tasks state
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Load event data
   useEffect(() => {
@@ -33,6 +62,21 @@ export default function EventPage() {
     });
   }, [id]);
 
+  // Load tasks data
+  useEffect(() => {
+    const loadTasks = async () => {
+      setIsLoadingTasks(true);
+      const result = await getTasks(id);
+      
+      if (result.data) {
+        setTasks(result.data);
+      }
+      setIsLoadingTasks(false);
+    };
+
+    loadTasks();
+  }, [id, tasksRefreshKey]);
+
   const handleSheetSuccess = () => {
     setIsSheetOpen(false);
     // Reload event data
@@ -43,6 +87,50 @@ export default function EventPage() {
       }
     });
   };
+
+  const handleTaskSheetSuccess = () => {
+    setIsTaskSheetOpen(false);
+    setParentTaskForCreation(null);
+    // Trigger tasks refresh
+    setTasksRefreshKey(prev => prev + 1);
+    // If we were creating a subtask, reopen parent edit dialog
+    if (shouldReopenParentDialog && selectedTaskId) {
+      setTimeout(() => {
+        setIsTaskEditOpen(true);
+        setShouldReopenParentDialog(false);
+      }, 100);
+    }
+  };
+
+  // Handle task row click to open edit dialog
+  const handleTaskClick = (task: any) => {
+    setSelectedTaskId(task.id);
+    setIsSubtask(!!task.parentTaskId);
+    setIsTaskEditOpen(true);
+  };
+
+  // Handle create subtask from edit dialog
+  const handleCreateSubtask = (parentTask: any) => {
+    setParentTaskForCreation(parentTask);
+    setShouldReopenParentDialog(true);
+    setIsTaskEditOpen(false);
+    setIsTaskSheetOpen(true);
+  };
+
+  // Handle task edit success
+  const handleTaskEditSuccess = () => {
+    setTasksRefreshKey(prev => prev + 1);
+  };
+
+  // Filter tasks by search query
+  const filteredTasks = tasks.filter((task) =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Separate tasks by type
+  const preEventTasks = filteredTasks.filter((task) => task.type === "PRE_EVENT");
+  const onEventTasks = filteredTasks.filter((task) => task.type === "ON_EVENT");
+  const postEventTasks = filteredTasks.filter((task) => task.type === "POST_EVENT");
 
   if (notFoundError) {
     notFound();
@@ -83,12 +171,79 @@ export default function EventPage() {
           </div>
 
           <TabsContent value="tasks" className="space-y-4 mt-6">
-            <div className="rounded-lg border p-8">
-              <h2 className="text-lg font-semibold mb-2">Task Management</h2>
-              <p className="text-sm text-muted-foreground">
-                Manage tasks and checklist for this event.
-              </p>
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 mb-4">
+              <div className="relative flex-1 sm:flex-initial sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button onClick={() => setIsTaskSheetOpen(true)} className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Task
+              </Button>
             </div>
+
+            <Accordion
+              type="multiple"
+              defaultValue={["pre-event", "on-event", "post-event"]}
+              className="space-y-4"
+            >
+              <AccordionItem value="pre-event" className="border rounded-lg">
+                <AccordionTrigger className="px-4 hover:no-underline">
+                  <span className="font-medium">
+                    Pre-Event Tasks ({preEventTasks.length})
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <TasksTable
+                    tasks={preEventTasks}
+                    isLoading={isLoadingTasks}
+                    type="PRE_EVENT"
+                    onTaskClick={handleTaskClick}
+                    clickable
+                  />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="on-event" className="border rounded-lg">
+                <AccordionTrigger className="px-4 hover:no-underline">
+                  <span className="font-medium">
+                    On-Event Tasks ({onEventTasks.length})
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <TasksTable
+                    tasks={onEventTasks}
+                    isLoading={isLoadingTasks}
+                    type="ON_EVENT"
+                    onTaskClick={handleTaskClick}
+                    clickable
+                  />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="post-event" className="border rounded-lg">
+                <AccordionTrigger className="px-4 hover:no-underline">
+                  <span className="font-medium">
+                    Post-Event Tasks ({postEventTasks.length})
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <TasksTable
+                    tasks={postEventTasks}
+                    isLoading={isLoadingTasks}
+                    type="POST_EVENT"
+                    onTaskClick={handleTaskClick}
+                    clickable
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </TabsContent>
 
           <TabsContent value="itinerary" className="space-y-4 mt-6">
@@ -136,6 +291,30 @@ export default function EventPage() {
         event={event}
         mode="edit"
         onSuccess={handleSheetSuccess}
+      />
+
+      {/* Task Sheet for creating tasks */}
+      <TaskSheet
+        open={isTaskSheetOpen}
+        onOpenChange={setIsTaskSheetOpen}
+        eventId={id}
+        onSuccess={handleTaskSheetSuccess}
+        parentTaskId={parentTaskForCreation?.id}
+        inheritedPriority={parentTaskForCreation?.priority}
+        inheritedType={parentTaskForCreation?.type}
+      />
+
+      {/* Task Edit Dialog */}
+      <TaskEditDialog
+        open={isTaskEditOpen}
+        onOpenChange={setIsTaskEditOpen}
+        taskId={selectedTaskId}
+        eventId={id}
+        isSubtask={isSubtask}
+        onCreateSubtask={handleCreateSubtask}
+        onSubtaskClick={handleTaskClick}
+        onParentTaskClick={handleTaskClick}
+        onSuccess={handleTaskEditSuccess}
       />
 
       {/* Event Switcher */}

@@ -240,9 +240,9 @@ model Task {
   title         String
   description   String?
   dueDate       DateTime?
-  priority      TaskPriority?
+  priority      TaskPriority    @default(MEDIUM)
   status        TaskStatus      @default(TO_DO)
-  group         TaskGroup       @default(PRE_EVENT)
+  type          TaskType        @default(PRE_EVENT)
 
   // Audit fields
   createdAt       DateTime      @default(now())
@@ -272,7 +272,7 @@ enum TaskStatus {
   CANCELLED
 }
 
-enum TaskGroup {
+enum TaskType {
   PRE_EVENT
   ON_EVENT
   POST_EVENT
