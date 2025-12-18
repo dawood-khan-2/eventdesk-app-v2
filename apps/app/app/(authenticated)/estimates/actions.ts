@@ -29,6 +29,7 @@ const createEstimateSchema = z.object({
   status: z.enum(["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"]).default("DRAFT"),
   clientId: z.string().optional(),
   leadId: z.string().optional(),
+  eventId: z.string().optional(),
   eventName: z.string().optional(),
   eventVenue: z.string().optional(),
   eventStartDate: z.string().optional(),
@@ -77,6 +78,7 @@ export async function createEstimate(input: CreateEstimateInput) {
           statusChangedAt: new Date(),
           clientId: validated.clientId,
           leadId: validated.leadId,
+          eventId: validated.eventId,
           eventName: validated.eventName,
           eventVenue: validated.eventVenue,
           eventStartDate: validated.eventStartDate ? new Date(validated.eventStartDate) : null,
@@ -106,7 +108,7 @@ export async function createEstimate(input: CreateEstimateInput) {
   }
 }
 
-export async function getEstimates(page = 1, limit = 20, query = "") {
+export async function getEstimates(page = 1, limit = 20, query = "", eventId?: string) {
   try {
     const { orgId } = await auth();
 
@@ -121,6 +123,7 @@ export async function getEstimates(page = 1, limit = 20, query = "") {
       prisma.estimate.findMany({
         where: {
           tenantId: internalOrgId,
+          ...(eventId && { eventId }), // Filter by eventId if provided
           ...(query && {
             OR: [
               { title: { contains: query, mode: "insensitive" } },

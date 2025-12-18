@@ -270,7 +270,7 @@ export function EstimatesTable({
                           e.stopPropagation();
                           handleSend(estimate);
                         }}
-                        disabled={estimate.status !== "DRAFT"}
+                        disabled={estimate.status !== "DRAFT" && estimate.status !== "SENT"}
                       >
                         <SendIcon className="mr-2 h-4 w-4" />
                         Send
@@ -409,7 +409,7 @@ export function EstimatesTable({
                         e.stopPropagation();
                         handleSend(estimate);
                       }}
-                      disabled={estimate.status !== "DRAFT"}
+                      disabled={estimate.status !== "DRAFT" && estimate.status !== "SENT"}
                     >
                       <SendIcon className="h-4 w-4" />
                     </Button>
