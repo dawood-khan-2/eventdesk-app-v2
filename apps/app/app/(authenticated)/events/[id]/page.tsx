@@ -4,6 +4,9 @@ import { notFound, useParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
 import { getEvent } from "../actions";
 import { getTasks, getItineraries } from "./actions";
+import { getEstimates } from "../../estimates/actions";
+import { getFinanceSettings } from "../../settings/actions";
+import { getServiceCategories } from "../../estimates/actions";
 import { Header } from "../../components/header";
 import { EventOverviewCard } from "./components/event-overview-card";
 import { EventSwitcher } from "./components/event-switcher";
@@ -13,6 +16,7 @@ import { TaskEditDialog } from "./components/task-edit-dialog";
 import { TasksTable } from "./components/tasks-table";
 import { ItinerarySheet } from "./components/itinerary-sheet";
 import { ItineraryTimeline } from "./components/itinerary-timeline";
+import { EstimatesClient } from "../../estimates/components/estimates-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/design-system/components/ui/tabs";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -57,6 +61,11 @@ export default function EventPage() {
   const [itinerariesRefreshKey, setItinerariesRefreshKey] = useState(0);
   const [itinerarySearchQuery, setItinerarySearchQuery] = useState("");
 
+  // Estimates state
+  const [estimates, setEstimates] = useState<any[]>([]);
+  const [currencyCode, setCurrencyCode] = useState<string>("USD");
+  const [serviceCategories, setServiceCategories] = useState<any[]>([]);
+
   // Load event data
   useEffect(() => {
     startTransition(async () => {
@@ -69,6 +78,38 @@ export default function EventPage() {
 
       setEvent(result.data);
     });
+  }, [id]);
+
+  // Load estimates data for this event
+  useEffect(() => {
+    const loadEstimates = async () => {
+      const [estimatesResult, financeSettings, categoriesResult] = await Promise.all([
+        getEstimates(1, 100, "", id), // Filter by event ID
+        getFinanceSettings(),
+        getServiceCategories(),
+      ]);
+      
+      if (estimatesResult.data) {
+        const transformedEstimates = estimatesResult.data.map(estimate => ({
+          ...estimate,
+          createdAt: estimate.createdAt.toISOString(),
+          eventStartDate: estimate.eventStartDate?.toISOString() || null,
+          eventEndDate: estimate.eventEndDate?.toISOString() || null,
+          lineItems: (estimate.lineItems as any[]) || []
+        }));
+        setEstimates(transformedEstimates);
+      }
+      
+      if (financeSettings.data?.currencyCode) {
+        setCurrencyCode(financeSettings.data.currencyCode);
+      }
+      
+      if (categoriesResult.data) {
+        setServiceCategories(categoriesResult.data);
+      }
+    };
+
+    loadEstimates();
   }, [id]);
 
   // Load tasks data
@@ -312,12 +353,23 @@ export default function EventPage() {
           </TabsContent>
 
           <TabsContent value="services" className="space-y-4 mt-6">
-            <div className="rounded-lg border p-8">
-              <h2 className="text-lg font-semibold mb-2">Estimates</h2>
-              <p className="text-sm text-muted-foreground">
-                Manage estimates for this event.
-              </p>
-            </div>
+            {event && (
+              <EstimatesClient
+                initialEstimates={estimates}
+                initialPage={1}
+                initialSearch=""
+                initialTotalPages={1}
+                eventId={id}
+                eventData={{
+                  id: event.id,
+                  clientId: event.clientId,
+                  name: event.name,
+                  venue: event.venue,
+                  startDate: event.startDate,
+                  endDate: event.endDate,
+                }}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="finances" className="space-y-4 mt-6">

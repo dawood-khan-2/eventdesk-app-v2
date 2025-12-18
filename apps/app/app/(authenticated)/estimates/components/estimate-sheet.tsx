@@ -63,9 +63,18 @@ interface EstimateSheetProps {
   onSuccess?: () => void;
   currencyCode?: string;
   serviceCategories: ServiceCategory[];
+  // Event context for auto-fill and freezing
+  eventData?: {
+    id: string;
+    clientId: string;
+    name: string;
+    venue?: string | null;
+    startDate: Date;
+    endDate: Date;
+  };
 }
 
-export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, currencyCode = "USD", serviceCategories }: EstimateSheetProps) {
+export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, currencyCode = "USD", serviceCategories, eventData }: EstimateSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
@@ -79,6 +88,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
     eventVenue: estimate?.eventVenue || "",
     eventStartDate: estimate?.eventStartDate || "",
     eventEndDate: estimate?.eventEndDate || "",
+    expiryDate: estimate?.expiryDate || "",
     discount: estimate?.discount || 0,
     lineItems: estimate?.lineItems || [{
       id: crypto.randomUUID(),
@@ -97,12 +107,13 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
       if (mode === "create") {
         setFormData({
           title: "",
-          leadOrClientId: "",
-          leadOrClientType: "",
-          eventName: "",
-          eventVenue: "",
-          eventStartDate: "",
-          eventEndDate: "",
+          leadOrClientId: eventData?.clientId || "",
+          leadOrClientType: eventData?.clientId ? "client" : "",
+          eventName: eventData?.name || "",
+          eventVenue: eventData?.venue || "",
+          eventStartDate: eventData?.startDate ? new Date(eventData.startDate).toISOString().split('T')[0] : "",
+          eventEndDate: eventData?.endDate ? new Date(eventData.endDate).toISOString().split('T')[0] : "",
+          expiryDate: "",
           discount: 0,
           lineItems: [{
             id: crypto.randomUUID(),
@@ -121,8 +132,9 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
           leadOrClientType: estimate.leadId ? "lead" : estimate.clientId ? "client" : "",
           eventName: estimate.eventName || "",
           eventVenue: estimate.eventVenue || "",
-          eventStartDate: estimate.eventStartDate || "",
-          eventEndDate: estimate.eventEndDate || "",
+          eventStartDate: estimate.eventStartDate ? new Date(estimate.eventStartDate).toISOString().split('T')[0] : "",
+          eventEndDate: estimate.eventEndDate ? new Date(estimate.eventEndDate).toISOString().split('T')[0] : "",
+          expiryDate: estimate.expiryDate ? new Date(estimate.expiryDate).toISOString().split('T')[0] : "",
           discount: estimate.discount || 0,
           lineItems: estimate.lineItems || [{
             id: crypto.randomUUID(),
@@ -136,7 +148,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
         });
       }
     }
-  }, [open, mode, estimate]);
+  }, [open, mode, estimate, eventData]);
 
   // Fetch leads and clients on mount
   useEffect(() => {
@@ -186,10 +198,12 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
           status: "DRAFT",
           leadId: formData.leadOrClientType === "lead" ? formData.leadOrClientId : undefined,
           clientId: formData.leadOrClientType === "client" ? formData.leadOrClientId : undefined,
+          eventId: eventData?.id, // Auto-fill eventId from event context
           eventName: formData.eventName || undefined,
           eventVenue: formData.eventVenue || undefined,
           eventStartDate: formData.eventStartDate || undefined,
           eventEndDate: formData.eventEndDate || undefined,
+          expiryDate: formData.expiryDate || undefined,
           discount: formData.discount || 0,
           lineItems: formData.lineItems,
         });
@@ -206,13 +220,13 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
         const result = await updateEstimate({
           id: estimate.id,
           title: formData.title,
-          status: estimate.status,
           leadId: formData.leadOrClientType === "lead" ? formData.leadOrClientId : undefined,
           clientId: formData.leadOrClientType === "client" ? formData.leadOrClientId : undefined,
           eventName: formData.eventName || undefined,
           eventVenue: formData.eventVenue || undefined,
           eventStartDate: formData.eventStartDate || undefined,
           eventEndDate: formData.eventEndDate || undefined,
+          expiryDate: formData.expiryDate || undefined,
           discount: formData.discount || 0,
           lineItems: formData.lineItems,
         });
@@ -359,7 +373,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       <label className="text-sm font-medium text-muted-foreground">Event Start Date</label>
                       <p className="mt-1">
                         {estimate?.eventStartDate 
-                          ? new Date(estimate.eventStartDate).toLocaleDateString()
+                          ? new Date(estimate.eventStartDate).toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" })
                           : "—"}
                       </p>
                     </div>
@@ -368,10 +382,19 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       <label className="text-sm font-medium text-muted-foreground">Event End Date</label>
                       <p className="mt-1">
                         {estimate?.eventEndDate 
-                          ? new Date(estimate.eventEndDate).toLocaleDateString()
+                          ? new Date(estimate.eventEndDate).toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" })
                           : "—"}
                       </p>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Expiry Date</label>
+                    <p className="mt-1">
+                      {estimate?.expiryDate 
+                        ? new Date(estimate.expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" })
+                        : "—"}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -523,6 +546,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       role="combobox"
                       aria-expanded={comboboxOpen}
                       className="w-full justify-between font-normal"
+                      disabled={!!eventData} // Disable when in event context
                     >
                       {formData.leadOrClientId ? (
                         <span>
@@ -629,6 +653,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       placeholder="Enter event name..." 
                       value={formData.eventName}
                       onChange={(e) => setFormData(prev => ({ ...prev, eventName: e.target.value }))}
+                      disabled={!!eventData} // Freeze when in event context
                     />
                   </div>
 
@@ -638,6 +663,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       placeholder="Enter event venue..." 
                       value={formData.eventVenue}
                       onChange={(e) => setFormData(prev => ({ ...prev, eventVenue: e.target.value }))}
+                      disabled={!!eventData} // Freeze when in event context
                     />
                   </div>
 
@@ -648,6 +674,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                         type="date" 
                         value={formData.eventStartDate}
                         onChange={(e) => setFormData(prev => ({ ...prev, eventStartDate: e.target.value }))}
+                        disabled={!!eventData} // Freeze when in event context
                       />
                     </div>
 
@@ -657,8 +684,18 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                         type="date" 
                         value={formData.eventEndDate}
                         onChange={(e) => setFormData(prev => ({ ...prev, eventEndDate: e.target.value }))}
+                        disabled={!!eventData} // Freeze when in event context
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Expiry Date</label>
+                    <Input 
+                      type="date" 
+                      value={formData.expiryDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                    />
                   </div>
                 </CardContent>
               </Card>

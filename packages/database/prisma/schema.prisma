@@ -156,35 +156,38 @@ model Client {
 }
 
 model Estimate {
-  tenantId        String
-  id              String        @id @default(cuid())
+  tenantId          String
+  id                String          @id @default(cuid())
 
-  leadId          String?       // Optional reference to Lead
-  clientId        String?       // Optional reference to Client
-  eventId         String?       // Optional reference to Event
+  leadId            String?         // Optional reference to Lead
+  clientId          String?         // Optional reference to Client
+  eventId           String?         // Optional reference to Event
 
-  title           String
-  status          EstimateStatus @default(DRAFT)
-  eventName       String?
-  eventVenue      String?
-  eventStartDate  DateTime?
-  eventEndDate    DateTime?
+  title             String
+  status            EstimateStatus  @default(DRAFT)
+  eventName         String?
+  eventVenue        String?
+  eventStartDate    DateTime?
+  eventEndDate      DateTime?
+  expiryDate        DateTime?
+  statusChangedAt   DateTime        @default(now())
 
-  lineItems       Json          /* service category, service description, quantity, unit, tax, rate, amount */
-  discount        Float?        @default(0.0)
+  lineItems         Json            /* service category, service description, quantity, unit, tax, rate, amount */
+  discount          Float?          @default(0.0)
 
-  // Audit fields
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  // Audit fiel ds  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   // Relations
-  organization    Organization  @relation(fields: [tenantId], references: [id])
-  lead            Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  client          Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  event           Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  organization      Organization    @relation(fields: [tenantId], references: [id])
+  lead              Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  client            Client?         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  event             Event?          @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("estimates")
   @@index([tenantId])
+  @@index([eventId])
 }
 
 enum EstimateStatus {
@@ -257,6 +260,7 @@ model Task {
 
   @@map("tasks")
   @@index([tenantId])
+  @@index([eventId])
 }
 
 enum TaskPriority {
@@ -297,6 +301,7 @@ model Checklist{
 
   @@map("checklists")
   @@index([tenantId])
+  @@index([taskId])
 }
 
 model Itinerary{
@@ -316,4 +321,5 @@ model Itinerary{
 
   @@map("itineraries")
   @@index([tenantId])
+  @@index([eventId])
 }

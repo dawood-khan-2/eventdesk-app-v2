@@ -24,9 +24,13 @@ import {
   TrashIcon,
   CalendarIcon,
   MapPinIcon,
+  SendIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { DeleteEstimateDialog } from "./delete-estimate-dialog";
+import { SendEstimateDialog } from "./send-estimate-dialog";
+import { sendEstimateEmail } from "../actions";
+import { toast } from "sonner";
 
 type Estimate = {
   id: string;
@@ -37,8 +41,8 @@ type Estimate = {
   eventStartDate?: string | null;
   eventEndDate?: string | null;
   createdAt: string;
-  client?: { name: string } | null;
-  lead?: { name: string } | null;
+  client?: { name: string; email: string | null } | null;
+  lead?: { name: string; email: string | null } | null;
   lineItems: any[];
   discount?: number | null;
 };
@@ -108,10 +112,50 @@ export function EstimatesTable({
 }: EstimatesTableProps) {
   const [deleteEstimateId, setDeleteEstimateId] = useState<string | null>(null);
   const [deleteEstimateTitle, setDeleteEstimateTitle] = useState("");
+  const [sendEstimateId, setSendEstimateId] = useState<string | null>(null);
+  const [sendEstimateTitle, setSendEstimateTitle] = useState("");
+  const [sendClientName, setSendClientName] = useState("");
+  const [sendClientEmail, setSendClientEmail] = useState("");
 
   const handleDelete = (estimate: Estimate) => {
     setDeleteEstimateId(estimate.id);
     setDeleteEstimateTitle(estimate.title);
+  };
+
+  const handleSend = (estimate: Estimate) => {
+    const clientName = estimate.client?.name || estimate.lead?.name || "Unknown";
+    const clientEmail = estimate.client?.email || estimate.lead?.email || "No email";
+    
+    setSendEstimateId(estimate.id);
+    setSendEstimateTitle(estimate.title);
+    setSendClientName(clientName);
+    setSendClientEmail(clientEmail);
+  };
+
+  const handleConfirmSend = async () => {
+    if (!sendEstimateId) return;
+    
+    try {
+      const result = await sendEstimateEmail(sendEstimateId);
+      
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      
+      toast.success("Estimate sent successfully!");
+      
+      // Close dialog
+      setSendEstimateId(null);
+      setSendEstimateTitle("");
+      setSendClientName("");
+      setSendClientEmail("");
+
+      // Trigger data refresh
+      onDelete?.();
+    } catch (error) {
+      toast.error("Failed to send estimate. Please try again.");
+    }
   };
 
   if (isLoading) {
@@ -216,6 +260,7 @@ export function EstimatesTable({
                           e.stopPropagation();
                           onEdit(estimate);
                         }}
+                        disabled={estimate.status !== "DRAFT"}
                       >
                         <EditIcon className="mr-2 h-4 w-4" />
                         Edit
@@ -223,8 +268,19 @@ export function EstimatesTable({
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
+                          handleSend(estimate);
+                        }}
+                        disabled={estimate.status !== "DRAFT" && estimate.status !== "SENT"}
+                      >
+                        <SendIcon className="mr-2 h-4 w-4" />
+                        Send
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleDelete(estimate);
                         }}
+                        disabled={estimate.status !== "DRAFT"}
                         className="text-red-600"
                       >
                         <TrashIcon className="mr-2 h-4 w-4" />
@@ -242,7 +298,7 @@ export function EstimatesTable({
                       </p>
                     )}
                     <p className="text-muted-foreground">
-                      {new Date(estimate.createdAt).toLocaleDateString()}
+                      {new Date(estimate.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" })}
                     </p>
                   </div>
                   <div className="text-right space-y-1">
@@ -331,7 +387,7 @@ export function EstimatesTable({
                   {formatCurrency(calculateTotal(estimate.lineItems, estimate.discount || 0), currencyCode)}
                 </TableCell>
                 <TableCell>
-                  {new Date(estimate.createdAt).toLocaleDateString()}
+                  {new Date(estimate.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" })}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
@@ -342,6 +398,7 @@ export function EstimatesTable({
                         e.stopPropagation();
                         onEdit(estimate);
                       }}
+                      disabled={estimate.status !== "DRAFT"}
                     >
                       <EditIcon className="h-4 w-4" />
                     </Button>
@@ -350,8 +407,20 @@ export function EstimatesTable({
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
+                        handleSend(estimate);
+                      }}
+                      disabled={estimate.status !== "DRAFT" && estimate.status !== "SENT"}
+                    >
+                      <SendIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         handleDelete(estimate);
                       }}
+                      disabled={estimate.status !== "DRAFT"}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </Button>
@@ -373,6 +442,22 @@ export function EstimatesTable({
           }
         }}
         onSuccess={onDelete}
+      />
+      
+      <SendEstimateDialog
+        estimateId={sendEstimateId}
+        estimateTitle={sendEstimateTitle}
+        clientName={sendClientName}
+        clientEmail={sendClientEmail}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSendEstimateId(null);
+            setSendEstimateTitle("");
+            setSendClientName("");
+            setSendClientEmail("");
+          }
+        }}
+        onConfirm={handleConfirmSend}
       />
     </>
   );

@@ -35,8 +35,8 @@ type Estimate = {
   eventStartDate?: string | null;
   eventEndDate?: string | null;
   createdAt: string;
-  client?: { name: string } | null;
-  lead?: { name: string } | null;
+  client?: { name: string; email: string | null } | null;
+  lead?: { name: string; email: string | null } | null;
   lineItems: any[];
   discount?: number | null;
 };
@@ -52,6 +52,16 @@ type EstimatesClientProps = {
   initialSearch: string;
   initialTotalPages: number;
   error?: string;
+  // Event context for filtering and auto-fill
+  eventId?: string;
+  eventData?: {
+    id: string;
+    clientId: string;
+    name: string;
+    venue?: string | null;
+    startDate: Date;
+    endDate: Date;
+  };
 };
 
 export function EstimatesClient({
@@ -60,6 +70,8 @@ export function EstimatesClient({
   initialSearch,
   initialTotalPages,
   error,
+  eventId,
+  eventData,
 }: EstimatesClientProps) {
   const [isPending, startTransition] = useTransition();
   
@@ -100,7 +112,7 @@ export function EstimatesClient({
   // Fetch data when search or page changes
   useEffect(() => {
     startTransition(async () => {
-      const result = await getEstimates(currentPage, 20, debouncedSearchQuery);
+      const result = await getEstimates(currentPage, 20, debouncedSearchQuery, eventId);
       if (result.data) {
         const transformedEstimates = result.data.map(estimate => ({
           ...estimate,
@@ -113,7 +125,7 @@ export function EstimatesClient({
         setTotalPages(Math.ceil(transformedEstimates.length / 10));
       }
     });
-  }, [debouncedSearchQuery, currentPage]);
+  }, [debouncedSearchQuery, currentPage, eventId]);
 
   const handleCreateNew = () => {
     setSelectedEstimate(null);
@@ -142,7 +154,7 @@ export function EstimatesClient({
     // Refresh data after successful create/update
     handleSheetClose();
     startTransition(async () => {
-      const result = await getEstimates(currentPage, 20, debouncedSearchQuery);
+      const result = await getEstimates(currentPage, 20, debouncedSearchQuery, eventId);
       if (result.data) {
         const transformedEstimates = result.data.map(estimate => ({
           ...estimate,
@@ -168,8 +180,8 @@ export function EstimatesClient({
   return (
     <>
       {/* Header Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-end">
+        <div className="relative sm:w-64">
           <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
@@ -229,6 +241,7 @@ export function EstimatesClient({
         onSuccess={handleEstimateSuccess}
         currencyCode={currencyCode}
         serviceCategories={serviceCategories}
+        eventData={eventData}
       />
     </>
   );
