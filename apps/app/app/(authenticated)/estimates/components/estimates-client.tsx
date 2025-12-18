@@ -35,8 +35,8 @@ type Estimate = {
   eventStartDate?: string | null;
   eventEndDate?: string | null;
   createdAt: string;
-  client?: { name: string } | null;
-  lead?: { name: string } | null;
+  client?: { name: string; email: string | null } | null;
+  lead?: { name: string; email: string | null } | null;
   lineItems: any[];
   discount?: number | null;
 };

@@ -79,6 +79,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
     eventVenue: estimate?.eventVenue || "",
     eventStartDate: estimate?.eventStartDate || "",
     eventEndDate: estimate?.eventEndDate || "",
+    expiryDate: estimate?.expiryDate || "",
     discount: estimate?.discount || 0,
     lineItems: estimate?.lineItems || [{
       id: crypto.randomUUID(),
@@ -103,6 +104,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
           eventVenue: "",
           eventStartDate: "",
           eventEndDate: "",
+          expiryDate: "",
           discount: 0,
           lineItems: [{
             id: crypto.randomUUID(),
@@ -121,8 +123,9 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
           leadOrClientType: estimate.leadId ? "lead" : estimate.clientId ? "client" : "",
           eventName: estimate.eventName || "",
           eventVenue: estimate.eventVenue || "",
-          eventStartDate: estimate.eventStartDate || "",
-          eventEndDate: estimate.eventEndDate || "",
+          eventStartDate: estimate.eventStartDate ? new Date(estimate.eventStartDate).toISOString().split('T')[0] : "",
+          eventEndDate: estimate.eventEndDate ? new Date(estimate.eventEndDate).toISOString().split('T')[0] : "",
+          expiryDate: estimate.expiryDate ? new Date(estimate.expiryDate).toISOString().split('T')[0] : "",
           discount: estimate.discount || 0,
           lineItems: estimate.lineItems || [{
             id: crypto.randomUUID(),
@@ -190,6 +193,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
           eventVenue: formData.eventVenue || undefined,
           eventStartDate: formData.eventStartDate || undefined,
           eventEndDate: formData.eventEndDate || undefined,
+          expiryDate: formData.expiryDate || undefined,
           discount: formData.discount || 0,
           lineItems: formData.lineItems,
         });
@@ -206,13 +210,13 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
         const result = await updateEstimate({
           id: estimate.id,
           title: formData.title,
-          status: estimate.status,
           leadId: formData.leadOrClientType === "lead" ? formData.leadOrClientId : undefined,
           clientId: formData.leadOrClientType === "client" ? formData.leadOrClientId : undefined,
           eventName: formData.eventName || undefined,
           eventVenue: formData.eventVenue || undefined,
           eventStartDate: formData.eventStartDate || undefined,
           eventEndDate: formData.eventEndDate || undefined,
+          expiryDate: formData.expiryDate || undefined,
           discount: formData.discount || 0,
           lineItems: formData.lineItems,
         });
@@ -359,7 +363,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       <label className="text-sm font-medium text-muted-foreground">Event Start Date</label>
                       <p className="mt-1">
                         {estimate?.eventStartDate 
-                          ? new Date(estimate.eventStartDate).toLocaleDateString()
+                          ? new Date(estimate.eventStartDate).toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" })
                           : "—"}
                       </p>
                     </div>
@@ -368,10 +372,19 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       <label className="text-sm font-medium text-muted-foreground">Event End Date</label>
                       <p className="mt-1">
                         {estimate?.eventEndDate 
-                          ? new Date(estimate.eventEndDate).toLocaleDateString()
+                          ? new Date(estimate.eventEndDate).toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" })
                           : "—"}
                       </p>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Expiry Date</label>
+                    <p className="mt-1">
+                      {estimate?.expiryDate 
+                        ? new Date(estimate.expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" })
+                        : "—"}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -659,6 +672,15 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                         onChange={(e) => setFormData(prev => ({ ...prev, eventEndDate: e.target.value }))}
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Expiry Date</label>
+                    <Input 
+                      type="date" 
+                      value={formData.expiryDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                    />
                   </div>
                 </CardContent>
               </Card>
