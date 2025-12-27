@@ -118,7 +118,6 @@ export async function getServiceCategories() {
 
     const categories = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.serviceCategories.findMany({
-        where: { tenantId: internalOrgId },
         orderBy: { name: "asc" },
       })
     );

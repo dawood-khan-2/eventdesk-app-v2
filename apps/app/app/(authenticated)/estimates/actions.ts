@@ -299,9 +299,7 @@ export async function getEstimatesStats() {
     const internalOrgId = await getInternalOrgId(orgId);
 
     const count = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
-      prisma.estimate.count({
-        where: { tenantId: internalOrgId },
-      })
+      prisma.estimate.count()
     );
 
     return { data: { total: count } };
@@ -357,32 +355,6 @@ export async function updateEstimateStatus(
   } catch (error) {
     console.error("Failed to update estimate status:", error);
     return { error: "Failed to update estimate status" };
-  }
-}
-
-// Helper function to get service categories for line items
-export async function getServiceCategories() {
-  try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
-
-    const categories = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
-      prisma.serviceCategories.findMany({
-        where: { tenantId: internalOrgId },
-        select: { id: true, name: true },
-        orderBy: { name: "asc" },
-      })
-    );
-
-    return { data: categories };
-  } catch (error) {
-    console.error("Failed to get service categories:", error);
-    return { error: "Failed to get service categories" };
   }
 }
 

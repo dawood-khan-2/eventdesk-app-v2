@@ -62,6 +62,7 @@ model Organization {
   clients     Client[]
   estimates   Estimate[]
   events      Event[]
+  invoices    Invoice[]
 
   @@map("organizations")
   @@index([clerkId])
@@ -150,6 +151,7 @@ model Client {
   organization  Organization @relation(fields: [tenantId], references: [id])
   estimates     Estimate[]
   events        Event[]
+  invoices      Invoice[]
   
   @@map("clients")
   @@index([tenantId])
@@ -175,7 +177,7 @@ model Estimate {
   lineItems         Json            /* service category, service description, quantity, unit, tax, rate, amount */
   discount          Float?          @default(0.0)
 
-  // Audit fiel ds  
+  // Audit fields  
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -230,6 +232,7 @@ model Event {
   estimates       Estimate[]
   tasks           Task[]
   itineraries     Itinerary[]
+  invoices        Invoice[]
 
   @@map("events")
   @@index([tenantId])
@@ -322,4 +325,47 @@ model Itinerary{
   @@map("itineraries")
   @@index([tenantId])
   @@index([eventId])
+}
+
+model Invoice {
+  tenantId          String
+  id                String          @id @default(cuid())
+
+  clientId          String         // reference to Client
+  eventId           String         // reference to Event
+
+  number            String
+  billTo            String
+  shipTo            String?
+  invoiceDate       DateTime        @default(now())
+  dueDate           DateTime
+  poNumber          String?         // Purchase Order Number
+  paymentTerms      String?         // e.g., "Net 30", "Due on Receipt"
+  notes             String?         // Any relevant information not already covered
+  terms             String?         /* Terms and conditions - late fees, payment methods, delivery schedule */
+  
+  lineItems         Json            /* service category, service description, quantity, unit, tax, rate, amount */
+  discount          Float           @default(0.0)
+  amountPaid        Float           @default(0.0)
+  balanceDue        Float           @default(0.0)
+  status            InvoiceStatus   @default(UNPAID)
+
+  // Audit fields  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  organization      Organization    @relation(fields: [tenantId], references: [id])
+  client            Client          @relation(fields: [clientId], references: [id])
+  event             Event           @relation(fields: [eventId], references: [id])
+
+  @@map("invoices")
+  @@index([tenantId])
+  @@index([eventId])
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
 }
