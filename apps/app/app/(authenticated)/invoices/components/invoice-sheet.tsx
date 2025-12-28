@@ -41,7 +41,7 @@ import { toast } from "sonner";
 import { getCurrencyConfig } from "@repo/internationalization/currencies";
 import { cn } from "@repo/design-system/lib/utils";
 import { Badge } from "@repo/design-system/components/ui/badge";
-import type { InvoiceStatus } from "@repo/database";
+import type { InvoiceStatus } from "@/lib/invoice-calculations";
 
 interface LineItem {
   id: string;
@@ -369,8 +369,8 @@ export function InvoiceSheet({
 
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
-                  <Badge variant="secondary" className={`text-white ${invoice?.status ? statusColors[invoice.status] : ''} mt-1`}>
-                    {invoice?.status ? statusLabels[invoice.status] : ''}
+                  <Badge variant="secondary" className={`text-white ${invoice?.status ? statusColors[invoice.status as InvoiceStatus] : ''} mt-1`}>
+                    {invoice?.status ? statusLabels[invoice.status as InvoiceStatus] : ''}
                   </Badge>
                 </div>
               </div>

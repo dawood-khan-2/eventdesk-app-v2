@@ -3,6 +3,11 @@
 import { multiTenantDb, database } from "@repo/database";
 import { jwtVerify } from "jose";
 import { env } from "@/env";
+import {
+  calculateInvoiceTotals,
+  calculatePaymentStatus,
+  calculateInvoiceWithPayments,
+} from "@/lib/invoice-calculations";
 
 type TokenPayload = {
   invoiceId: string;
@@ -47,6 +52,12 @@ export async function validateInvoiceToken(token: string, invoiceId: string) {
               endDate: true,
             },
           },
+          paymentRecords: {
+            include: {
+              paymentMode: { select: { name: true } },
+            },
+            orderBy: { paymentDate: "desc" },
+          },
         },
       });
     });
@@ -67,8 +78,11 @@ export async function validateInvoiceToken(token: string, invoiceId: string) {
       },
     });
 
+    // Calculate payment information
+    const invoiceWithPayments = calculateInvoiceWithPayments(invoice);
+
     return {
-      invoice,
+      invoice: invoiceWithPayments,
       organization,
     };
   } catch (error) {

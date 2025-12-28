@@ -9,7 +9,7 @@ import { InvoicesTable } from "./invoices-table";
 import { InvoiceSheet } from "./invoice-sheet";
 import { getInvoices, getInvoicesStats } from "../actions";
 import { getFinanceSettings, getServiceCategories } from "../../settings/actions";
-import type { InvoiceStatus } from "@repo/database";
+import type { InvoiceStatus } from "@/lib/invoice-calculations";
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {

@@ -12,6 +12,11 @@ import { keys as emailKeys } from "@repo/email/keys";
 import { InvoiceViewTemplate } from "@repo/email/templates/invoice-view";
 import { render } from "@react-email/components";
 import { getFinanceSettings } from "../settings/actions";
+import {
+  calculateInvoiceTotals,
+  calculatePaymentStatus,
+  calculateInvoiceWithPayments,
+} from "@/lib/invoice-calculations";
 
 // Line Item Schema
 const lineItemSchema = z.object({
@@ -60,29 +65,15 @@ const updateInvoiceSchema = z.object({
 const recordPaymentSchema = z.object({
   id: z.string(),
   amount: z.number().min(0.01, "Payment amount must be greater than zero"),
+  paymentDate: z.string(),
+  paymentModeId: z.string().min(1, "Payment mode is required"),
+  referenceNumber: z.string().optional(),
 });
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
 export type LineItem = z.infer<typeof lineItemSchema>;
-
-/**
- * Calculate invoice totals from line items
- */
-function calculateInvoiceTotals(lineItems: any[], discount: number) {
-  const subtotal = lineItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-  const discountAmount = subtotal * (discount / 100);
-  const subtotalAfterDiscount = subtotal - discountAmount;
-  const tax = lineItems.reduce((sum, item) => {
-    const itemSubtotal = item.quantity * item.rate;
-    const itemAfterDiscount = subtotal === 0 ? 0 : itemSubtotal * (subtotalAfterDiscount / subtotal);
-    return sum + (itemAfterDiscount * (item.tax / 100));
-  }, 0);
-  const total = subtotalAfterDiscount + tax;
-
-  return { subtotal, discountAmount, tax, total };
-}
 
 export async function createInvoice(input: CreateInvoiceInput) {
   try {
@@ -94,9 +85,6 @@ export async function createInvoice(input: CreateInvoiceInput) {
 
     const validated = createInvoiceSchema.parse(input);
     const internalOrgId = await getInternalOrgId(orgId);
-
-    // Calculate totals
-    const { total } = calculateInvoiceTotals(validated.lineItems, validated.discount);
 
     const invoice = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.invoice.create({
@@ -115,20 +103,18 @@ export async function createInvoice(input: CreateInvoiceInput) {
           terms: validated.terms,
           lineItems: validated.lineItems,
           discount: validated.discount,
-          amountPaid: 0,
-          balanceDue: total,
-          status: "UNPAID",
         },
         include: {
           client: { select: { name: true, email: true } },
           event: { select: { name: true } },
+          paymentRecords: true,
         },
       })
     );
 
     revalidatePath("/invoices");
 
-    return { data: invoice };
+    return { data: calculateInvoiceWithPayments(invoice) };
   } catch (error) {
     console.error("Failed to create invoice:", error);
 
@@ -168,6 +154,12 @@ export async function getInvoices(page = 1, limit = 20, query = "", eventId?: st
         include: {
           client: { select: { name: true, email: true } },
           event: { select: { name: true } },
+          paymentRecords: {
+            include: {
+              paymentMode: { select: { name: true } },
+            },
+            orderBy: { paymentDate: "desc" },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip: offset,
@@ -175,7 +167,10 @@ export async function getInvoices(page = 1, limit = 20, query = "", eventId?: st
       })
     );
 
-    return { data: invoices };
+    // Calculate payment information for each invoice
+    const invoicesWithPayments = invoices.map(calculateInvoiceWithPayments);
+
+    return { data: invoicesWithPayments };
   } catch (error) {
     console.error("Failed to get invoices:", error);
     return { error: "Failed to get invoices" };
@@ -198,6 +193,12 @@ export async function getInvoice(id: string) {
         include: {
           client: { select: { id: true, name: true, email: true, company: true, address: true } },
           event: { select: { id: true, name: true, startDate: true, endDate: true, venue: true } },
+          paymentRecords: {
+            include: {
+              paymentMode: { select: { name: true } },
+            },
+            orderBy: { paymentDate: "desc" },
+          },
         },
       })
     );
@@ -206,7 +207,7 @@ export async function getInvoice(id: string) {
       return { error: "Invoice not found" };
     }
 
-    return { data: invoice };
+    return { data: calculateInvoiceWithPayments(invoice) };
   } catch (error) {
     console.error("Failed to get invoice:", error);
     return { error: "Failed to get invoice" };
@@ -223,31 +224,6 @@ export async function updateInvoice(input: UpdateInvoiceInput) {
 
     const validated = updateInvoiceSchema.parse(input);
     const internalOrgId = await getInternalOrgId(orgId);
-
-    // Get current invoice to preserve amountPaid
-    const currentInvoice = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
-      prisma.invoice.findUnique({
-        where: { id: validated.id },
-        select: { amountPaid: true },
-      })
-    );
-
-    if (!currentInvoice) {
-      return { error: "Invoice not found" };
-    }
-
-    // Calculate new totals
-    const { total } = calculateInvoiceTotals(validated.lineItems, validated.discount);
-    const amountPaid = currentInvoice.amountPaid;
-    const balanceDue = total - amountPaid;
-
-    // Determine new status
-    let status: "UNPAID" | "PARTIALLY_PAID" | "PAID" = "UNPAID";
-    if (amountPaid >= total) {
-      status = "PAID";
-    } else if (amountPaid > 0) {
-      status = "PARTIALLY_PAID";
-    }
 
     const invoice = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.invoice.update({
@@ -266,19 +242,18 @@ export async function updateInvoice(input: UpdateInvoiceInput) {
           terms: validated.terms,
           lineItems: validated.lineItems,
           discount: validated.discount,
-          balanceDue,
-          status,
         },
         include: {
           client: { select: { name: true, email: true } },
           event: { select: { name: true } },
+          paymentRecords: true,
         },
       })
     );
 
     revalidatePath("/invoices");
 
-    return { data: invoice };
+    return { data: calculateInvoiceWithPayments(invoice) };
   } catch (error) {
     console.error("Failed to update invoice:", error);
 
@@ -362,23 +337,40 @@ export async function getInvoicesStats() {
 
     const internalOrgId = await getInternalOrgId(orgId);
 
-    const [total, unpaid, partiallyPaid, paid] = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
-      return Promise.all([
-        prisma.invoice.count(),
-        prisma.invoice.count({ where: { status: "UNPAID" } }),
-        prisma.invoice.count({ where: { status: "PARTIALLY_PAID" } }),
-        prisma.invoice.count({ where: { status: "PAID" } }),
-      ]);
+    const stats = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // Fetch all invoices with payment records
+      const invoices = await prisma.invoice.findMany({
+        include: {
+          paymentRecords: true,
+        },
+      });
+
+      // Calculate stats from all invoices
+      const total = invoices.length;
+      let unpaid = 0;
+      let partiallyPaid = 0;
+      let paid = 0;
+
+      for (const invoice of invoices) {
+        const invoiceWithPayments = calculateInvoiceWithPayments(invoice);
+        
+        switch (invoiceWithPayments.status) {
+          case "UNPAID":
+            unpaid++;
+            break;
+          case "PARTIALLY_PAID":
+            partiallyPaid++;
+            break;
+          case "PAID":
+            paid++;
+            break;
+        }
+      }
+
+      return { total, unpaid, partiallyPaid, paid };
     });
 
-    return {
-      data: {
-        total,
-        unpaid,
-        partiallyPaid,
-        paid,
-      },
-    };
+    return { data: stats };
   } catch (error) {
     console.error("Failed to get invoices stats:", error);
     return { error: "Failed to get invoices stats" };
@@ -399,52 +391,44 @@ export async function recordPayment(input: RecordPaymentInput) {
     const validated = recordPaymentSchema.parse(input);
     const internalOrgId = await getInternalOrgId(orgId);
 
-    const invoice = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
-      // Get current invoice
-      const current = await prisma.invoice.findUnique({
-        where: { id: validated.id },
+    const result = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // Create payment record
+      await prisma.paymentRecord.create({
+        data: {
+          tenantId: internalOrgId,
+          invoiceId: validated.id,
+          amount: validated.amount,
+          paymentDate: new Date(validated.paymentDate),
+          paymentModeId: validated.paymentModeId,
+          referenceNumber: validated.referenceNumber,
+        },
       });
 
-      if (!current) {
-        throw new Error("Invoice not found");
-      }
-
-      // Calculate line items to get total
-      const { total } = calculateInvoiceTotals(
-        current.lineItems as any[],
-        current.discount
-      );
-
-      // Calculate new amounts
-      const newAmountPaid = current.amountPaid + validated.amount;
-      const newBalanceDue = total - newAmountPaid;
-
-      // Determine new status
-      let newStatus: "UNPAID" | "PARTIALLY_PAID" | "PAID" = "UNPAID";
-      if (newAmountPaid >= total) {
-        newStatus = "PAID";
-      } else if (newAmountPaid > 0) {
-        newStatus = "PARTIALLY_PAID";
-      }
-
-      // Update invoice
-      return prisma.invoice.update({
+      // Fetch updated invoice with all payment records
+      const invoice = await prisma.invoice.findUnique({
         where: { id: validated.id },
-        data: {
-          amountPaid: newAmountPaid,
-          balanceDue: Math.max(0, newBalanceDue), // Ensure balance doesn't go negative
-          status: newStatus,
-        },
         include: {
           client: { select: { name: true, email: true } },
           event: { select: { name: true } },
+          paymentRecords: {
+            include: {
+              paymentMode: { select: { name: true } },
+            },
+            orderBy: { paymentDate: "desc" },
+          },
         },
       });
+
+      if (!invoice) {
+        throw new Error("Invoice not found");
+      }
+
+      return invoice;
     });
 
     revalidatePath("/invoices");
 
-    return { data: invoice };
+    return { data: calculateInvoiceWithPayments(result) };
   } catch (error) {
     console.error("Failed to record payment:", error);
 
@@ -552,7 +536,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
           month: "long",
           day: "numeric",
         }),
-        balanceDue: formatCurrency(invoice.balanceDue),
+        balanceDue: formatCurrency(invoice.balanceDue), // Now calculated by getInvoice
       })
     );
 

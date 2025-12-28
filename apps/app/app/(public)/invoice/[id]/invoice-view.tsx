@@ -58,8 +58,8 @@ type InvoiceViewProps = {
 };
 
 const statusColors = {
-  UNPAID: "bg-yellow-500",
-  PARTIALLY_PAID: "bg-blue-500",
+  UNPAID: "bg-red-500",
+  PARTIALLY_PAID: "bg-orange-500",
   PAID: "bg-green-500",
   OVERDUE: "bg-red-500",
 } as const;
@@ -122,6 +122,10 @@ export function InvoiceView({ invoice, organization }: InvoiceViewProps) {
   const discount = calculateDiscount(invoice.lineItems, invoice.discount);
   const tax = calculateTax(invoice.lineItems, invoice.discount);
   const total = calculateTotal(invoice.lineItems, invoice.discount);
+
+  // Calculate balance due from total and amount paid
+  const amountPaid = invoice.amountPaid || 0;
+  const balanceDue = Math.max(0, total - amountPaid);
 
   const companyName = organization?.name || "Company Name";
   const companyLogo = organization?.imageUrl || null;
@@ -283,17 +287,17 @@ export function InvoiceView({ invoice, organization }: InvoiceViewProps) {
                 <span className="text-zinc-900">Total:</span>
                 <span className="text-zinc-900">{formatCurrency(total, currencyCode)}</span>
               </div>
-              {invoice.amountPaid > 0 && (
+              {amountPaid > 0 && (
                 <>
                   <div className="flex justify-between text-sm py-2 border-t border-zinc-200">
                     <span className="text-zinc-600">Amount Paid:</span>
                     <span className="font-medium text-green-600">
-                      -{formatCurrency(invoice.amountPaid, currencyCode)}
+                      -{formatCurrency(amountPaid, currencyCode)}
                     </span>
                   </div>
                   <div className="flex justify-between text-lg font-bold py-3 border-t-2 border-zinc-300">
                     <span className="text-zinc-900">Balance Due:</span>
-                    <span className="text-zinc-900">{formatCurrency(invoice.balanceDue, currencyCode)}</span>
+                    <span className="text-zinc-900">{formatCurrency(balanceDue, currencyCode)}</span>
                   </div>
                 </>
               )}

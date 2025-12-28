@@ -24,14 +24,16 @@ import {
   CalendarIcon,
   SendIcon,
   ReceiptIcon,
+  EyeIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { DeleteInvoiceDialog } from "./delete-invoice-dialog";
 import { SendInvoiceDialog } from "./send-invoice-dialog";
 import { RecordPaymentDialog } from "./record-payment-dialog";
+import { ViewPaymentsDialog } from "./view-payments-dialog";
 import { sendInvoiceEmail } from "../actions";
 import { toast } from "sonner";
-import type { InvoiceStatus } from "@repo/database";
+import type { InvoiceStatus } from "@/lib/invoice-calculations";
 
 type Invoice = {
   id: string;
@@ -52,6 +54,13 @@ type Invoice = {
   event?: { name: string } | null;
   lineItems: any[];
   discount?: number | null;
+  paymentRecords?: Array<{
+    id: string;
+    amount: number;
+    paymentDate: Date | string;
+    referenceNumber?: string | null;
+    paymentMode: { name: string };
+  }>;
 };
 
 type InvoicesTableProps = {
@@ -129,6 +138,10 @@ export function InvoicesTable({
   const [paymentInvoiceNumber, setPaymentInvoiceNumber] = useState("");
   const [paymentBalanceDue, setPaymentBalanceDue] = useState(0);
 
+  const [viewPaymentsOpen, setViewPaymentsOpen] = useState(false);
+  const [viewPaymentsInvoiceNumber, setViewPaymentsInvoiceNumber] = useState("");
+  const [viewPaymentsRecords, setViewPaymentsRecords] = useState<Invoice['paymentRecords']>([]);
+
   const handleDelete = (invoice: Invoice) => {
     setDeleteInvoiceId(invoice.id);
     setDeleteInvoiceNumber(invoice.number);
@@ -148,6 +161,12 @@ export function InvoicesTable({
     setPaymentInvoiceId(invoice.id);
     setPaymentInvoiceNumber(invoice.number);
     setPaymentBalanceDue(invoice.balanceDue);
+  };
+
+  const handleViewPayments = (invoice: Invoice) => {
+    setViewPaymentsInvoiceNumber(invoice.number);
+    setViewPaymentsRecords(invoice.paymentRecords || []);
+    setViewPaymentsOpen(true);
   };
 
   const handleConfirmSend = async () => {
@@ -305,6 +324,15 @@ export function InvoicesTable({
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
+                            handleViewPayments(invoice);
+                          }}
+                        >
+                          <EyeIcon className="mr-2 h-4 w-4" />
+                          View Payments
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleSend(invoice);
                           }}
                         >
@@ -428,6 +456,15 @@ export function InvoicesTable({
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
+                            handleViewPayments(invoice);
+                          }}
+                        >
+                          <EyeIcon className="mr-2 h-4 w-4" />
+                          View Payments
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleSend(invoice);
                           }}
                         >
@@ -496,6 +533,14 @@ export function InvoicesTable({
           }
         }}
         onSuccess={onUpdate}
+      />
+
+      <ViewPaymentsDialog
+        open={viewPaymentsOpen}
+        onOpenChange={setViewPaymentsOpen}
+        invoiceNumber={viewPaymentsInvoiceNumber}
+        paymentRecords={viewPaymentsRecords || []}
+        currencyCode={currencyCode}
       />
     </>
   );

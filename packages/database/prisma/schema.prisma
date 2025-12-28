@@ -208,6 +208,11 @@ model ServiceCategories {
 
   name          String
 
+  // @TODO: should add them at the right time (whenever migration permits).
+  // Audit fields
+  // createdAt         DateTime        @default(now())
+  // updatedAt         DateTime        @updatedAt
+
   @@map("service_categories")
   @@index([tenantId])
 }
@@ -348,9 +353,6 @@ model Invoice {
   
   lineItems         Json            /* service category, service description, quantity, unit, tax, rate, amount */
   discount          Float           @default(0.0)
-  amountPaid        Float           @default(0.0)
-  balanceDue        Float           @default(0.0)
-  status            InvoiceStatus   @default(UNPAID)
 
   // Audit fields  
   createdAt         DateTime        @default(now())
@@ -360,16 +362,38 @@ model Invoice {
   organization      Organization    @relation(fields: [tenantId], references: [id])
   client            Client          @relation(fields: [clientId], references: [id])
   event             Event           @relation(fields: [eventId], references: [id])
+  paymentRecords    PaymentRecord[]
 
   @@map("invoices")
   @@index([tenantId])
   @@index([eventId])
 }
 
-enum InvoiceStatus {
-  UNPAID
-  PARTIALLY_PAID
-  PAID
+model PaymentRecord {
+  tenantId        String
+  id              String          @id @default(cuid())
+  
+  invoiceId       String?         // Reference to Invoice
+  billId          String?         // Reference to Bill (future)
+  
+  paymentDate     DateTime
+  amount          Float
+  paymentModeId   String          // FK to PaymentModes
+  
+  referenceNumber String?         // Transaction ID, cheque number, etc.
+  
+  // Audit fields  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  paymentMode     PaymentModes    @relation(fields: [paymentModeId], references: [id])
+  invoice         Invoice?        @relation(fields: [invoiceId], references: [id])
+  
+  @@map("payment_records")
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@index([billId])
 }
 
 model PaymentModes {
@@ -377,6 +401,13 @@ model PaymentModes {
   id            String   @id @default(cuid())
 
   name          String
+
+  // Audit fields  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  paymentRecords    PaymentRecord[]
 
   @@map("payment_modes")
   @@index([tenantId])
