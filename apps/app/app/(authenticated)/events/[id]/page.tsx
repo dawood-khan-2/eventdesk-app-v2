@@ -5,6 +5,7 @@ import { useState, useEffect, useTransition } from "react";
 import { getEvent } from "../actions";
 import { getTasks, getItineraries } from "./actions";
 import { getEstimates } from "../../estimates/actions";
+import { getInvoices } from "../../invoices/actions";
 import { getFinanceSettings, getServiceCategories } from "../../settings/actions";
 import { Header } from "../../components/header";
 import { EventOverviewCard } from "./components/event-overview-card";
@@ -16,6 +17,7 @@ import { TasksTable } from "./components/tasks-table";
 import { ItinerarySheet } from "./components/itinerary-sheet";
 import { ItineraryTimeline } from "./components/itinerary-timeline";
 import { EstimatesClient } from "../../estimates/components/estimates-client";
+import { InvoicesClient } from "../../invoices/components/invoices-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/design-system/components/ui/tabs";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -65,6 +67,9 @@ export default function EventPage() {
   const [currencyCode, setCurrencyCode] = useState<string>("USD");
   const [serviceCategories, setServiceCategories] = useState<any[]>([]);
 
+  // Invoices state
+  const [invoices, setInvoices] = useState<any[]>([]);
+
   // Load event data
   useEffect(() => {
     startTransition(async () => {
@@ -109,6 +114,26 @@ export default function EventPage() {
     };
 
     loadEstimates();
+  }, [id]);
+
+  // Load invoices data for this event
+  useEffect(() => {
+    const loadInvoices = async () => {
+      const invoicesResult = await getInvoices(1, 100, "", id); // Filter by event ID
+      
+      if (invoicesResult.data) {
+        const transformedInvoices = invoicesResult.data.map(invoice => ({
+          ...invoice,
+          createdAt: invoice.createdAt.toISOString(),
+          invoiceDate: invoice.invoiceDate.toISOString(),
+          dueDate: invoice.dueDate.toISOString(),
+          lineItems: (invoice.lineItems as any[]) || [],
+        }));
+        setInvoices(transformedInvoices);
+      }
+    };
+
+    loadInvoices();
   }, [id]);
 
   // Load tasks data
@@ -372,12 +397,24 @@ export default function EventPage() {
           </TabsContent>
 
           <TabsContent value="finances" className="space-y-4 mt-6">
-            <div className="rounded-lg border p-8">
-              <h2 className="text-lg font-semibold mb-2">Invoices & Payments</h2>
-              <p className="text-sm text-muted-foreground">
-                Track invoices and payment status for this event.
-              </p>
-            </div>
+            {event && (
+              <InvoicesClient
+                initialInvoices={invoices}
+                initialPage={1}
+                initialSearch=""
+                initialTotalPages={1}
+                initialCurrencyCode={currencyCode}
+                eventId={id}
+                eventData={{
+                  id: event.id,
+                  clientId: event.clientId,
+                  name: event.name,
+                  venue: event.venue,
+                  startDate: event.startDate,
+                  endDate: event.endDate,
+                }}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="vendors" className="space-y-4 mt-6">
