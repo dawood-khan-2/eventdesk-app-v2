@@ -59,6 +59,7 @@ type InvoicesClientProps = {
   initialPage: number;
   initialSearch: string;
   initialTotalPages: number;
+  initialCurrencyCode?: string;
   error?: string;
   eventId?: string;
   eventData?: {
@@ -78,6 +79,7 @@ export function InvoicesClient({
   initialPage,
   initialSearch,
   initialTotalPages,
+  initialCurrencyCode = "USD",
   error,
   eventId,
   eventData,
@@ -93,7 +95,7 @@ export function InvoicesClient({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<"create" | "view">("create");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [currencyCode, setCurrencyCode] = useState<string>("USD");
+  const [currencyCode, setCurrencyCode] = useState<string>(initialCurrencyCode);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<StatusFilterType>("ALL");
   const [stats, setStats] = useState<{

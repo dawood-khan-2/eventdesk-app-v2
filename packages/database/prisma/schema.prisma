@@ -50,7 +50,9 @@ model Organization {
   imageUrl    String?
 
   // Settings
-  currencyCode String  @default("USD") // ISO 4217 currency code (e.g., USD, EUR, GBP)
+  currencyCode  String  @default("USD") // ISO 4217 currency code (e.g., USD, EUR, GBP)
+  address       String?
+  phone         String?
 
   // Audit fields
   createdAt   DateTime @default(now())
@@ -369,3 +371,14 @@ enum InvoiceStatus {
   PARTIALLY_PAID
   PAID
 }
+
+model PaymentModes {
+  tenantId      String
+  id            String   @id @default(cuid())
+
+  name          String
+
+  @@map("payment_modes")
+  @@index([tenantId])
+}
+

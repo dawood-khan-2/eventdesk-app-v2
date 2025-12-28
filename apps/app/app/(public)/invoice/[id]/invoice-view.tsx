@@ -46,7 +46,10 @@ type Invoice = {
 
 type Organization = {
   name: string;
-  metadata: any;
+  imageUrl: string | null;
+  address: string | null;
+  phone: string | null;
+  currencyCode: string;
 } | null;
 
 type InvoiceViewProps = {
@@ -68,10 +71,10 @@ const statusLabels = {
   OVERDUE: "Overdue",
 } as const;
 
-function formatCurrency(amount: number): string {
+function formatCurrency(amount: number, currencyCode: string = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: currencyCode,
   }).format(amount);
 }
 
@@ -121,12 +124,10 @@ export function InvoiceView({ invoice, organization }: InvoiceViewProps) {
   const total = calculateTotal(invoice.lineItems, invoice.discount);
 
   const companyName = organization?.name || "Company Name";
-  const companyInfo = organization?.metadata as {
-    address?: string;
-    phone?: string;
-    email?: string;
-    website?: string;
-  } | null;
+  const companyLogo = organization?.imageUrl || null;
+  const companyAddress = organization?.address || null;
+  const companyPhone = organization?.phone || null;
+  const currencyCode = organization?.currencyCode || "USD";
 
   return (
     <div className="min-h-screen bg-zinc-50 py-8 px-4">
@@ -134,26 +135,29 @@ export function InvoiceView({ invoice, organization }: InvoiceViewProps) {
         <Card className="p-8 md:p-12 shadow-lg">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-stretch mb-8 pb-6 border-b-2 border-zinc-200">
-            {/* Left Side: Company Info + Bill To / Ship To */}
+            {/* Left Side: Company Logo/Name + Address + Phone + Bill To / Ship To */}
             <div className="mb-6 md:mb-0 flex-1 flex flex-col justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-zinc-900 mb-2">{companyName}</h1>
-                {companyInfo?.address && (
-                  <p className="text-sm text-zinc-600">{companyInfo.address}</p>
+              {/* Company Logo/Name and Contact Info */}
+              <div className="mb-6">
+                {companyLogo ? (
+                  <img
+                    src={companyLogo}
+                    alt={companyName}
+                    className="h-16 w-auto object-contain mb-2"
+                  />
+                ) : (
+                  <h1 className="text-2xl font-bold text-zinc-900 mb-2">{companyName}</h1>
                 )}
-                {companyInfo?.phone && (
-                  <p className="text-sm text-zinc-600">{companyInfo.phone}</p>
+                {companyAddress && (
+                  <p className="text-sm text-zinc-600 whitespace-pre-line">{companyAddress}</p>
                 )}
-                {companyInfo?.email && (
-                  <p className="text-sm text-zinc-600">{companyInfo.email}</p>
-                )}
-                {companyInfo?.website && (
-                  <p className="text-sm text-zinc-600">{companyInfo.website}</p>
+                {companyPhone && (
+                  <p className="text-sm text-zinc-600">{companyPhone}</p>
                 )}
               </div>
 
-              {/* Bill To / Ship To - Bottom aligned */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {/* Bill To / Ship To */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Bill To */}
                 {invoice.billTo && (
                   <div>
@@ -182,7 +186,8 @@ export function InvoiceView({ invoice, organization }: InvoiceViewProps) {
 
             {/* Right Side: Invoice Info */}
             <div className="text-left md:text-right flex flex-col justify-between">
-              <div className="mb-4">
+              {/* Invoice Info */}
+              <div>
                 <h2 className="text-4xl font-bold text-zinc-900 mb-2">INVOICE</h2>
                 <Badge variant="secondary" className={`text-white ${statusColors[invoice.status]}`}>
                   {statusLabels[invoice.status]}
@@ -216,39 +221,39 @@ export function InvoiceView({ invoice, organization }: InvoiceViewProps) {
           <div className="mb-8">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-zinc-300">
-                    <th className="text-left py-3 font-semibold text-zinc-900">Description</th>
-                    <th className="text-right py-3 font-semibold text-zinc-900 hidden sm:table-cell">
+                <thead className="bg-slate-200">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-900">Description</th>
+                    <th className="text-right py-3 px-4 font-semibold text-slate-900 hidden sm:table-cell">
                       Quantity
                     </th>
-                    <th className="text-right py-3 font-semibold text-zinc-900 hidden sm:table-cell">
+                    <th className="text-right py-3 px-4 font-semibold text-slate-900 hidden sm:table-cell">
                       Rate
                     </th>
-                    <th className="text-right py-3 font-semibold text-zinc-900">Amount</th>
+                    <th className="text-right py-3 px-4 font-semibold text-slate-900">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoice.lineItems.map((item) => (
                     <tr key={item.id} className="border-b border-zinc-200">
-                      <td className="py-4 text-zinc-800">
+                      <td className="py-4 px-4 text-zinc-800">
                         <div>{item.description}</div>
                         <div className="text-xs text-zinc-500 sm:hidden">
-                          {item.quantity} {item.unit} × {formatCurrency(item.rate)}
+                          {item.quantity} {item.unit} × {formatCurrency(item.rate, currencyCode)}
                           {item.tax > 0 && ` (Tax: ${item.tax}%)`}
                         </div>
                       </td>
-                      <td className="text-right py-4 text-zinc-800 hidden sm:table-cell">
+                      <td className="text-right py-4 px-4 text-zinc-800 hidden sm:table-cell">
                         {item.quantity} {item.unit}
                       </td>
-                      <td className="text-right py-4 text-zinc-800 hidden sm:table-cell">
-                        {formatCurrency(item.rate)}
+                      <td className="text-right py-4 px-4 text-zinc-800 hidden sm:table-cell">
+                        {formatCurrency(item.rate, currencyCode)}
                         {item.tax > 0 && (
                           <div className="text-xs text-zinc-500">Tax: {item.tax}%</div>
                         )}
                       </td>
-                      <td className="text-right py-4 text-zinc-800 font-medium">
-                        {formatCurrency(item.quantity * item.rate)}
+                      <td className="text-right py-4 px-4 text-zinc-800 font-medium">
+                        {formatCurrency(item.quantity * item.rate, currencyCode)}
                       </td>
                     </tr>
                   ))}
@@ -262,33 +267,33 @@ export function InvoiceView({ invoice, organization }: InvoiceViewProps) {
             <div className="w-full md:w-80 space-y-2">
               <div className="flex justify-between text-sm py-2">
                 <span className="text-zinc-600">Subtotal:</span>
-                <span className="font-medium text-zinc-900">{formatCurrency(subtotal)}</span>
+                <span className="font-medium text-zinc-900">{formatCurrency(subtotal, currencyCode)}</span>
               </div>
               {invoice.discount > 0 && (
                 <div className="flex justify-between text-sm py-2">
                   <span className="text-zinc-600">Discount ({invoice.discount}%):</span>
-                  <span className="font-medium text-green-600">-{formatCurrency(discount)}</span>
+                  <span className="font-medium text-green-600">-{formatCurrency(discount, currencyCode)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm py-2">
                 <span className="text-zinc-600">Tax:</span>
-                <span className="font-medium text-zinc-900">{formatCurrency(tax)}</span>
+                <span className="font-medium text-zinc-900">{formatCurrency(tax, currencyCode)}</span>
               </div>
               <div className="flex justify-between text-lg font-bold py-3 border-t-2 border-zinc-300">
                 <span className="text-zinc-900">Total:</span>
-                <span className="text-zinc-900">{formatCurrency(total)}</span>
+                <span className="text-zinc-900">{formatCurrency(total, currencyCode)}</span>
               </div>
               {invoice.amountPaid > 0 && (
                 <>
                   <div className="flex justify-between text-sm py-2 border-t border-zinc-200">
                     <span className="text-zinc-600">Amount Paid:</span>
                     <span className="font-medium text-green-600">
-                      -{formatCurrency(invoice.amountPaid)}
+                      -{formatCurrency(invoice.amountPaid, currencyCode)}
                     </span>
                   </div>
                   <div className="flex justify-between text-lg font-bold py-3 border-t-2 border-zinc-300">
                     <span className="text-zinc-900">Balance Due:</span>
-                    <span className="text-zinc-900">{formatCurrency(invoice.balanceDue)}</span>
+                    <span className="text-zinc-900">{formatCurrency(invoice.balanceDue, currencyCode)}</span>
                   </div>
                 </>
               )}

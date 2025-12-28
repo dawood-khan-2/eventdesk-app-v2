@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Header } from "../components/header";
 import { getInvoices } from "./actions";
 import { InvoicesClient } from "./components/invoices-client";
+import { getFinanceSettings } from "../settings/actions";
 
 type SearchParams = {
   page?: string;
@@ -17,9 +18,14 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
   const page = Number(params.page) || 1;
   const search = params.search || "";
 
-  // Fetch invoices immediately
-  const invoicesResult = await getInvoices(page, 20, search);
+  // Fetch invoices and currency settings
+  const [invoicesResult, financeSettings] = await Promise.all([
+    getInvoices(page, 20, search),
+    getFinanceSettings(),
+  ]);
+  
   const invoices = invoicesResult.data || [];
+  const currencyCode = financeSettings.data?.currencyCode || "USD";
 
   // Transform the invoices to match client component expectations
   const transformedInvoices = invoices.map((invoice) => ({
@@ -42,6 +48,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
             initialPage={page}
             initialSearch={search}
             initialTotalPages={totalPages}
+            initialCurrencyCode={currencyCode}
             error={invoicesResult.error}
           />
         </Suspense>

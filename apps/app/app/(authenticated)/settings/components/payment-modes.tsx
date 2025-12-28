@@ -25,98 +25,98 @@ import { toast } from "sonner";
 import { PlusIcon, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import {
-  createServiceCategory,
-  deleteServiceCategory,
-  updateServiceCategory,
-  type CreateServiceCategoryInput,
-  type UpdateServiceCategoryInput,
+  createPaymentMode,
+  deletePaymentMode,
+  updatePaymentMode,
+  type CreatePaymentModeInput,
+  type UpdatePaymentModeInput,
 } from "../actions";
 
-type ServiceCategory = {
+type PaymentMode = {
   id: string;
   name: string;
 };
 
-type ServiceCategoriesProps = {
-  categories: ServiceCategory[];
+type PaymentModesProps = {
+  paymentModes: PaymentMode[];
 };
 
-export function ServiceCategories({ categories }: ServiceCategoriesProps) {
+export function PaymentModes({ paymentModes }: PaymentModesProps) {
   const [isPending, startTransition] = useTransition();
-  const [editingCategory, setEditingCategory] = useState<ServiceCategory | null>(null);
-  const [deletingCategory, setDeletingCategory] = useState<ServiceCategory | null>(null);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [editCategoryName, setEditCategoryName] = useState("");
+  const [editingMode, setEditingMode] = useState<PaymentMode | null>(null);
+  const [deletingMode, setDeletingMode] = useState<PaymentMode | null>(null);
+  const [newModeName, setNewModeName] = useState("");
+  const [editModeName, setEditModeName] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const handleCreate = (data: CreateServiceCategoryInput) => {
+  const handleCreate = (data: CreatePaymentModeInput) => {
     startTransition(async () => {
-      const result = await createServiceCategory(data);
+      const result = await createPaymentMode(data);
 
       if (result.error) {
         toast.error(result.error);
         return;
       }
 
-      toast.success("Service category created successfully");
-      setNewCategoryName("");
+      toast.success("Payment mode created successfully");
+      setNewModeName("");
       setIsAddDialogOpen(false);
     });
   };
 
-  const handleUpdate = (data: UpdateServiceCategoryInput) => {
+  const handleUpdate = (data: UpdatePaymentModeInput) => {
     startTransition(async () => {
-      const result = await updateServiceCategory(data);
+      const result = await updatePaymentMode(data);
 
       if (result.error) {
         toast.error(result.error);
         return;
       }
 
-      toast.success("Service category updated successfully");
-      setEditingCategory(null);
-      setEditCategoryName("");
+      toast.success("Payment mode updated successfully");
+      setEditingMode(null);
+      setEditModeName("");
       setIsEditDialogOpen(false);
     });
   };
 
   const handleDelete = (id: string) => {
     startTransition(async () => {
-      const result = await deleteServiceCategory(id);
+      const result = await deletePaymentMode(id);
 
       if (result.error) {
         toast.error(result.error);
         return;
       }
 
-      toast.success("Service category deleted successfully");
-      setDeletingCategory(null);
+      toast.success("Payment mode deleted successfully");
+      setDeletingMode(null);
     });
   };
 
-  const confirmDelete = (category: ServiceCategory) => {
-    setDeletingCategory(category);
+  const confirmDelete = (mode: PaymentMode) => {
+    setDeletingMode(mode);
   };
 
-  const openEditDialog = (category: ServiceCategory) => {
-    setEditingCategory(category);
-    setEditCategoryName(category.name);
+  const openEditDialog = (mode: PaymentMode) => {
+    setEditingMode(mode);
+    setEditModeName(mode.name);
     setIsEditDialogOpen(true);
   };
 
   return (
     <div className="space-y-4">
-      {/* Categories Display */}
+      {/* Payment Modes Display */}
       <div className="flex flex-wrap gap-2">
-        {categories.map((category) => (
-          <div key={category.id} className="group relative">
+        {paymentModes.map((mode) => (
+          <div key={mode.id} className="group relative">
             <Badge
               variant="secondary"
               className="cursor-pointer hover:bg-muted"
-              onClick={() => openEditDialog(category)}
+              onClick={() => openEditDialog(mode)}
             >
-              <span>{category.name}</span>
+              <span>{mode.name}</span>
             </Badge>
             <Button
               variant="ghost"
@@ -124,7 +124,7 @@ export function ServiceCategories({ categories }: ServiceCategoriesProps) {
               className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-red-500 p-0 text-white opacity-100 hover:bg-red-600 z-10 md:opacity-0 md:group-hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
-                confirmDelete(category);
+                confirmDelete(mode);
               }}
               disabled={isPending}
             >
@@ -133,7 +133,7 @@ export function ServiceCategories({ categories }: ServiceCategoriesProps) {
           </div>
         ))}
 
-        {/* Add Category Button */}
+        {/* Add Payment Mode Button */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Badge
@@ -141,29 +141,29 @@ export function ServiceCategories({ categories }: ServiceCategoriesProps) {
               className="cursor-pointer hover:bg-muted"
             >
               <PlusIcon className="mr-1 h-3 w-3" />
-              Add Category
+              Add Payment Mode
             </Badge>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Service Category</DialogTitle>
+              <DialogTitle>Add Payment Mode</DialogTitle>
             </DialogHeader>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (newCategoryName.trim()) {
-                  handleCreate({ name: newCategoryName.trim() });
+                if (newModeName.trim()) {
+                  handleCreate({ name: newModeName.trim() });
                 }
               }}
               className="space-y-4"
             >
               <div className="space-y-2">
-                <Label htmlFor="category-name">Category Name</Label>
+                <Label htmlFor="mode-name">Payment Mode Name</Label>
                 <Input
-                  id="category-name"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="e.g., Wedding Planning"
+                  id="mode-name"
+                  value={newModeName}
+                  onChange={(e) => setNewModeName(e.target.value)}
+                  placeholder="e.g., Cash, Cheque, Bank Transfer"
                   disabled={isPending}
                 />
               </div>
@@ -172,14 +172,14 @@ export function ServiceCategories({ categories }: ServiceCategoriesProps) {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setNewCategoryName("");
+                    setNewModeName("");
                     setIsAddDialogOpen(false);
                   }}
                   disabled={isPending}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isPending || !newCategoryName.trim()}>
+                <Button type="submit" disabled={isPending || !newModeName.trim()}>
                   {isPending ? "Creating..." : "Create"}
                 </Button>
               </div>
@@ -188,31 +188,32 @@ export function ServiceCategories({ categories }: ServiceCategoriesProps) {
         </Dialog>
       </div>
 
-      {/* Edit Category Dialog */}
-      {editingCategory && (
+      {/* Edit Payment Mode Dialog */}
+      {editingMode && (
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Edit Service Category</DialogTitle>
+              <DialogTitle>Edit Payment Mode</DialogTitle>
             </DialogHeader>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (editCategoryName.trim() && editingCategory) {
+                if (editModeName.trim()) {
                   handleUpdate({
-                    id: editingCategory.id,
-                    name: editCategoryName.trim(),
+                    id: editingMode.id,
+                    name: editModeName.trim(),
                   });
                 }
               }}
               className="space-y-4"
             >
               <div className="space-y-2">
-                <Label htmlFor="edit-category-name">Category Name</Label>
+                <Label htmlFor="edit-mode-name">Payment Mode Name</Label>
                 <Input
-                  id="edit-category-name"
-                  value={editCategoryName}
-                  onChange={(e) => setEditCategoryName(e.target.value)}
+                  id="edit-mode-name"
+                  value={editModeName}
+                  onChange={(e) => setEditModeName(e.target.value)}
+                  placeholder="e.g., Cash, Cheque, Bank Transfer"
                   disabled={isPending}
                 />
               </div>
@@ -221,19 +222,16 @@ export function ServiceCategories({ categories }: ServiceCategoriesProps) {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setEditingCategory(null);
-                    setEditCategoryName("");
+                    setEditingMode(null);
+                    setEditModeName("");
                     setIsEditDialogOpen(false);
                   }}
                   disabled={isPending}
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={isPending || !editCategoryName.trim()}
-                >
-                  {isPending ? "Saving..." : "Save"}
+                <Button type="submit" disabled={isPending || !editModeName.trim()}>
+                  {isPending ? "Updating..." : "Update"}
                 </Button>
               </div>
             </form>
@@ -241,27 +239,20 @@ export function ServiceCategories({ categories }: ServiceCategoriesProps) {
         </Dialog>
       )}
 
-      {categories.length === 0 && (
-        <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            No service categories yet. Click "Add Category" to get started.
-          </p>
-        </div>
-      )}
-
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deletingCategory} onOpenChange={() => setDeletingCategory(null)}>
+      <AlertDialog open={!!deletingMode} onOpenChange={() => setDeletingMode(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Service Category</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deletingCategory?.name}"? This action cannot be undone.
+              This will permanently delete the payment mode "{deletingMode?.name}". This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletingCategory && handleDelete(deletingCategory.id)}
+              onClick={() => deletingMode && handleDelete(deletingMode.id)}
               disabled={isPending}
               className="bg-red-500 hover:bg-red-600"
             >

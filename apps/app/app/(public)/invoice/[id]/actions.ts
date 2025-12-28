@@ -60,6 +60,10 @@ export async function validateInvoiceToken(token: string, invoiceId: string) {
       where: { id: tokenPayload.tenantId },
       select: {
         name: true,
+        imageUrl: true,
+        address: true,
+        phone: true,
+        currencyCode: true,
       },
     });
 
