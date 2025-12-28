@@ -90,7 +90,7 @@ const data: SidebarData = {
     },
     {
       title: "Invoices",
-      url: "#",
+      url: "/invoices",
       icon: FileTextIcon,
     },
     {
