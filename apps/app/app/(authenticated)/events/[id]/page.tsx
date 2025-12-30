@@ -122,7 +122,7 @@ export default function EventPage() {
       const invoicesResult = await getInvoices(1, 100, "", id); // Filter by event ID
       
       if (invoicesResult.data) {
-        const transformedInvoices = invoicesResult.data.map(invoice => ({
+        const transformedInvoices = invoicesResult.data.map((invoice: any) => ({
           ...invoice,
           createdAt: invoice.createdAt.toISOString(),
           invoiceDate: invoice.invoiceDate.toISOString(),
