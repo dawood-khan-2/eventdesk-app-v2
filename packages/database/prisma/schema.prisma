@@ -213,6 +213,9 @@ model ServiceCategories {
   // createdAt         DateTime        @default(now())
   // updatedAt         DateTime        @updatedAt
 
+  // Relations
+  vendors         VendorServices[]
+
   @@map("service_categories")
   @@index([tenantId])
 }
@@ -413,3 +416,44 @@ model PaymentModes {
   @@index([tenantId])
 }
 
+model Vendor {
+  tenantId      String
+  id            String   @id @default(cuid())
+
+  companyName   String
+  contactName   String?
+  email         String?
+  phone         String?
+  address       String?
+
+  // Audit fields  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  services         VendorServices[]
+
+  @@map("vendors")
+  @@index([tenantId])
+}
+
+model VendorServices {
+  tenantId      String
+  id            String   @id @default(cuid())
+  vendorId      String
+  serviceId     String
+
+  // Audit fields
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  vendor        Vendor              @relation(fields: [vendorId], references: [id])
+  service       ServiceCategories   @relation(fields: [serviceId], references: [id])
+
+  @@map("vendor_services")
+  @@unique([vendorId, serviceId])
+  @@index([vendorId])
+  @@index([serviceId])
+  @@index([tenantId])
+}
