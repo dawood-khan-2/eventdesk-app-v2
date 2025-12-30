@@ -100,7 +100,7 @@ const data: SidebarData = {
     },
     {
       title: "Vendors",
-      url: "#",
+      url: "/vendors",
       icon: StoreIcon,
     },
     {
