@@ -8,6 +8,7 @@ import { getInternalOrgId } from "../lib/auth-helpers";
 import {
   calculateBillWithPayments,
 } from "@/lib/bill-calculations";
+import { put, del } from "@repo/storage";
 
 const createBillSchema = z.object({
   number: z.string().min(1, "Bill number is required"),
@@ -17,6 +18,7 @@ const createBillSchema = z.object({
   billDate: z.string().min(1, "Bill date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   amount: z.number().min(0.01, "Amount must be greater than zero"),
+  attachmentUrl: z.string().optional(),
 });
 
 const updateBillSchema = z.object({
@@ -28,6 +30,7 @@ const updateBillSchema = z.object({
   billDate: z.string().min(1, "Bill date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   amount: z.number().min(0.01, "Amount must be greater than zero"),
+  attachmentUrl: z.string().optional(),
 });
 
 const recordPaymentSchema = z.object({
@@ -78,6 +81,7 @@ export async function createBill(input: CreateBillInput) {
           billDate: new Date(validated.billDate),
           dueDate: new Date(validated.dueDate),
           amount: validated.amount,
+          attachmentUrl: validated.attachmentUrl,
         },
         include: {
           vendor: { select: { id: true, companyName: true, contactName: true, email: true } },
@@ -259,6 +263,25 @@ export async function updateBill(input: UpdateBillInput) {
       return { error: "Bill number already exists for this vendor" };
     }
 
+    // If new attachment URL is provided, delete the old one
+    if (validated.attachmentUrl) {
+      const currentBill = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
+        prisma.bill.findUnique({
+          where: { id: validated.id },
+          select: { attachmentUrl: true },
+        })
+      );
+
+      if (currentBill?.attachmentUrl) {
+        try {
+          await del(currentBill.attachmentUrl);
+        } catch (error) {
+          console.error("Failed to delete old attachment:", error);
+          // Continue even if deletion fails
+        }
+      }
+    }
+
     const bill = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.bill.update({
         where: { id: validated.id },
@@ -270,6 +293,7 @@ export async function updateBill(input: UpdateBillInput) {
           billDate: new Date(validated.billDate),
           dueDate: new Date(validated.dueDate),
           amount: validated.amount,
+          attachmentUrl: validated.attachmentUrl,
         },
         include: {
           vendor: { select: { id: true, companyName: true, contactName: true, email: true } },
@@ -309,11 +333,30 @@ export async function deleteBill(id: string) {
 
     const internalOrgId = await getInternalOrgId(orgId);
 
+    // Get bill to check for attachment
+    const bill = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
+      prisma.bill.findUnique({
+        where: { id },
+        select: { attachmentUrl: true },
+      })
+    );
+
+    // Delete the bill
     await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.bill.delete({
         where: { id },
       })
     );
+
+    // Delete attachment from storage if exists
+    if (bill?.attachmentUrl) {
+      try {
+        await del(bill.attachmentUrl);
+      } catch (error) {
+        console.error("Failed to delete attachment:", error);
+        // Don't fail the operation if storage deletion fails
+      }
+    }
 
     revalidatePath("/bills");
 
@@ -538,5 +581,58 @@ export async function deleteBillPayment(paymentId: string, billId: string) {
   } catch (error) {
     console.error("Failed to delete payment:", error);
     return { error: "Failed to delete payment" };
+  }
+}
+
+/**
+ * Upload a bill attachment file
+ * Validates file type and size (max 4.5MB for server uploads)
+ */
+export async function uploadBillAttachment(formData: FormData) {
+  try {
+    const { orgId } = await auth();
+
+    if (!orgId) {
+      return { error: "Unauthorized" };
+    }
+
+    const file = formData.get("file") as File;
+
+    if (!file) {
+      return { error: "No file provided" };
+    }
+
+    // Validate file type
+    const allowedTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
+    if (!allowedTypes.includes(file.type)) {
+      return { error: "Invalid file type. Only PDF, PNG, and JPEG files are allowed." };
+    }
+
+    // Validate file size (4.5MB = 4.5 * 1024 * 1024 bytes)
+    const maxSize = 4.5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return { error: "File size exceeds 4.5MB limit" };
+    }
+
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const fileExt = file.name.split(".").pop();
+    const fileName = `bills/${orgId}/${timestamp}.${fileExt}`;
+
+    // Upload to Vercel Blob storage
+    const blob = await put(fileName, file, {
+      access: "public",
+    });
+
+    return { 
+      data: { 
+        url: blob.url, 
+        fileName: file.name,
+        size: file.size 
+      } 
+    };
+  } catch (error) {
+    console.error("Failed to upload attachment:", error);
+    return { error: "Failed to upload attachment" };
   }
 }

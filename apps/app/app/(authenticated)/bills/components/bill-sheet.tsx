@@ -28,11 +28,11 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { createBill, updateBill } from "../actions";
+import { createBill, updateBill, uploadBillAttachment } from "../actions";
 import { getEvents } from "../../events/actions";
 import { toast } from "sonner";
-import { useTransition, useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { useTransition, useEffect, useState, useRef } from "react";
+import { Pencil, Trash2, Paperclip, Download, FileText } from "lucide-react";
 import { DeleteBillDialog } from "./delete-bill-dialog";
 
 const billFormSchema = z.object({
@@ -56,6 +56,7 @@ type Bill = {
   billDate: Date;
   dueDate: Date;
   amount: number;
+  attachmentUrl?: string | null;
   status: "UNPAID" | "PARTIALLY_PAID" | "PAID";
   amountPaid: number;
   balanceDue: number;
@@ -128,6 +129,9 @@ export function BillSheet({
   const [filteredServiceCategories, setFilteredServiceCategories] = useState<ServiceCategory[]>(
     []
   );
+  const [uploadedFile, setUploadedFile] = useState<{ url: string; fileName: string; size: number } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isViewing = mode === "view";
   const isEditing = mode === "edit";
@@ -212,8 +216,63 @@ export function BillSheet({
       form.reset();
       setMode(initialMode);
       setFilteredServiceCategories([]);
+      setUploadedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
     onOpenChange(newOpen);
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Only PDF, PNG, and JPEG files are allowed.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    // Validate file size (4.5MB)
+    const maxSize = 4.5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error("File size exceeds 4.5MB limit");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const result = await uploadBillAttachment(formData);
+
+      if (result.error) {
+        toast.error(result.error);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      } else if (result.data) {
+        setUploadedFile(result.data);
+        toast.success("File uploaded successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to upload file");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleEdit = () => {
@@ -233,9 +292,13 @@ export function BillSheet({
 
   const onSubmit = (data: BillFormValues) => {
     startTransition(async () => {
+      // Only include attachmentUrl if there's a new upload or existing non-null URL
+      const attachmentUrl = uploadedFile?.url || (bill?.attachmentUrl ?? undefined);
+      
       const payload = {
         ...data,
         amount: Number.parseFloat(data.amount),
+        ...(attachmentUrl && { attachmentUrl }),
       };
 
       const result = bill
@@ -247,6 +310,10 @@ export function BillSheet({
       } else {
         toast.success(bill ? "Bill updated successfully" : "Bill created successfully");
         form.reset();
+        setUploadedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         onSuccess();
         if (bill) {
           setMode("view");
@@ -356,6 +423,28 @@ export function BillSheet({
                       </>
                     )}
                   </div>
+
+                  {bill.attachmentUrl && (
+                    <div className="mt-4 p-3 rounded-lg border bg-muted/30">
+                      <label className="text-sm font-medium flex items-center gap-2 mb-2">
+                        <Paperclip className="h-4 w-4" />
+                        Attachment
+                      </label>
+                      <a
+                        href={bill.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>
+                          {bill.attachmentUrl.split("/").pop()?.split(".")[0]}.
+                          {bill.attachmentUrl.split(".").pop()}
+                        </span>
+                        <Download className="h-3 w-3 ml-auto" />
+                      </a>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted p-3 mt-6">
                     <div>
@@ -527,6 +616,43 @@ export function BillSheet({
                       </FormItem>
                     )}
                   />
+
+                  {/* File Upload */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Paperclip className="h-4 w-4" />
+                      Attachment
+                      <span className="text-xs text-muted-foreground font-normal">
+                        (Optional - PDF, PNG, JPEG, max 4.5MB)
+                      </span>
+                    </label>
+                    <Input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={handleFileChange}
+                      disabled={isUploading || isPending}
+                      className="cursor-pointer"
+                    />
+                    {isUploading && (
+                      <p className="text-xs text-muted-foreground">Uploading...</p>
+                    )}
+                    {uploadedFile && (
+                      <div className="flex items-center gap-2 p-2 rounded-md bg-muted text-sm">
+                        <FileText className="h-4 w-4" />
+                        <span className="flex-1 truncate">{uploadedFile.fileName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({(uploadedFile.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                    )}
+                    {!uploadedFile && bill?.attachmentUrl && (
+                      <div className="flex items-center gap-2 p-2 rounded-md bg-muted text-sm">
+                        <FileText className="h-4 w-4" />
+                        <span className="flex-1 truncate">Current: {bill.attachmentUrl.split("/").pop()}</span>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 

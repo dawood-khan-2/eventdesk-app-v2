@@ -57,6 +57,7 @@ type Bill = {
   billDate: Date;
   dueDate: Date;
   amount: number;
+  attachmentUrl?: string | null;
   status: "UNPAID" | "PARTIALLY_PAID" | "PAID";
   amountPaid: number;
   balanceDue: number;
