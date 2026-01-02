@@ -110,6 +110,10 @@ interface BillSheetProps {
   vendors: Vendor[];
   serviceCategories: ServiceCategory[];
   currencyCode?: string;
+  eventData?: {
+    id: string;
+    name: string;
+  };
 }
 
 export function BillSheet({
@@ -121,6 +125,7 @@ export function BillSheet({
   vendors,
   serviceCategories,
   currencyCode = "USD",
+  eventData,
 }: BillSheetProps) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState(initialMode);
@@ -150,16 +155,18 @@ export function BillSheet({
     },
   });
 
-  // Load events on mount
+  // Load events on mount (only if not in event context)
   useEffect(() => {
-    async function loadEvents() {
-      const result = await getEvents({ limit: 1000 });
-      if (result.data) {
-        setEvents(result.data);
+    if (!eventData) {
+      async function loadEvents() {
+        const result = await getEvents({ limit: 1000 });
+        if (result.data) {
+          setEvents(result.data);
+        }
       }
+      loadEvents();
     }
-    loadEvents();
-  }, []);
+  }, [eventData]);
 
   // Reset form when bill prop or mode changes
   useEffect(() => {
@@ -168,7 +175,7 @@ export function BillSheet({
         number: bill?.number || "",
         vendorId: bill?.vendorId || "",
         serviceCategoryId: bill?.serviceCategoryId || "",
-        eventId: bill?.eventId || "",
+        eventId: bill?.eventId || eventData?.id || "",
         billDate: bill?.billDate ? new Date(bill.billDate).toISOString().split("T")[0] : "",
         dueDate: bill?.dueDate ? new Date(bill.dueDate).toISOString().split("T")[0] : "",
         amount: bill?.amount ? bill.amount.toString() : "",
@@ -548,20 +555,26 @@ export function BillSheet({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Event *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        {eventData ? (
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select an event" />
-                            </SelectTrigger>
+                            <Input value={eventData.name} disabled />
                           </FormControl>
-                          <SelectContent>
-                            {events.map((event) => (
-                              <SelectItem key={event.id} value={event.id}>
-                                {event.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        ) : (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select an event" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {events.map((event) => (
+                                <SelectItem key={event.id} value={event.id}>
+                                  {event.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}

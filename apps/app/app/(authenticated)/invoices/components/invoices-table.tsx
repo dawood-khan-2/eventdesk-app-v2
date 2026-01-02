@@ -69,6 +69,7 @@ type InvoicesTableProps = {
   isLoading?: boolean;
   currencyCode?: string;
   onUpdate?: () => void;
+  hideEventColumn?: boolean;
 };
 
 const statusColors = {
@@ -127,6 +128,7 @@ export function InvoicesTable({
   isLoading = false,
   currencyCode = "USD",
   onUpdate,
+  hideEventColumn = false,
 }: InvoicesTableProps) {
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
   const [deleteInvoiceNumber, setDeleteInvoiceNumber] = useState("");
@@ -223,7 +225,7 @@ export function InvoicesTable({
               <TableRow>
                 <TableHead>Invoice #</TableHead>
                 <TableHead>Client</TableHead>
-                <TableHead>Event</TableHead>
+                {!hideEventColumn && <TableHead>Event</TableHead>}
                 <TableHead>Total</TableHead>
                 <TableHead>Balance Due</TableHead>
                 <TableHead>Status</TableHead>
@@ -240,9 +242,11 @@ export function InvoicesTable({
                   <TableCell>
                     <Skeleton className="h-4 w-32" />
                   </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-28" />
-                  </TableCell>
+                  {!hideEventColumn && (
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Skeleton className="h-4 w-20" />
                   </TableCell>
@@ -382,7 +386,7 @@ export function InvoicesTable({
             <TableRow>
               <TableHead>Invoice #</TableHead>
               <TableHead>Client</TableHead>
-              <TableHead>Event</TableHead>
+              {!hideEventColumn && <TableHead>Event</TableHead>}
               <TableHead>Total</TableHead>
               <TableHead>Balance Due</TableHead>
               <TableHead>Status</TableHead>
@@ -413,16 +417,18 @@ export function InvoicesTable({
                       "—"
                     )}
                   </TableCell>
-                  <TableCell>
-                    {invoice.event ? (
-                      <div className="flex items-center text-sm">
-                        <CalendarIcon className="mr-1 h-3 w-3" />
-                        {invoice.event.name}
-                      </div>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
+                  {!hideEventColumn && (
+                    <TableCell>
+                      {invoice.event ? (
+                        <div className="flex items-center text-sm">
+                          <CalendarIcon className="mr-1 h-3 w-3" />
+                          {invoice.event.name}
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="font-semibold">{formatCurrency(total, currencyCode)}</TableCell>
                   <TableCell className={`font-semibold ${overdue ? "text-red-600" : ""}`}>
                     {formatCurrency(invoice.balanceDue, currencyCode)}

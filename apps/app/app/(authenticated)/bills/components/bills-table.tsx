@@ -71,6 +71,7 @@ interface BillsTableProps {
   onEditClick: (bill: Bill) => void;
   onDeleteSuccess: () => void;
   currencyCode?: string;
+  hideEventColumn?: boolean;
 }
 
 export function BillsTable({
@@ -80,6 +81,7 @@ export function BillsTable({
   onEditClick,
   onDeleteSuccess,
   currencyCode = "USD",
+  hideEventColumn = false,
 }: BillsTableProps) {
   const [deleteBillId, setDeleteBillId] = useState<string | null>(null);
   const [recordPaymentBill, setRecordPaymentBill] = useState<Bill | null>(null);
@@ -144,7 +146,7 @@ export function BillsTable({
                 <TableHead>Bill #</TableHead>
                 <TableHead>Vendor</TableHead>
                 <TableHead>Service</TableHead>
-                <TableHead>Event</TableHead>
+                {!hideEventColumn && <TableHead>Event</TableHead>}
                 <TableHead>Bill Date</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Amount</TableHead>
@@ -164,9 +166,11 @@ export function BillsTable({
                   <TableCell>
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-28" />
-                  </TableCell>
+                  {!hideEventColumn && (
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
@@ -280,10 +284,12 @@ export function BillsTable({
               </div>
 
               <div className="space-y-1 text-sm mb-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Event:</span>
-                  <span>{bill.event.name}</span>
-                </div>
+                {!hideEventColumn && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Event:</span>
+                    <span>{bill.event.name}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Amount:</span>
                   <span className="font-medium">{formatCurrency(bill.amount)}</span>
@@ -314,7 +320,7 @@ export function BillsTable({
               <TableHead>Bill #</TableHead>
               <TableHead>Vendor</TableHead>
               <TableHead>Service</TableHead>
-              <TableHead>Event</TableHead>
+              {!hideEventColumn && <TableHead>Event</TableHead>}
               <TableHead>Bill Date</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead>Amount</TableHead>
@@ -341,7 +347,7 @@ export function BillsTable({
                   </div>
                 </TableCell>
                 <TableCell>{bill.serviceCategory.name}</TableCell>
-                <TableCell>{bill.event.name}</TableCell>
+                {!hideEventColumn && <TableCell>{bill.event.name}</TableCell>}
                 <TableCell>{formatDate(bill.billDate)}</TableCell>
                 <TableCell>{formatDate(bill.dueDate)}</TableCell>
                 <TableCell>
