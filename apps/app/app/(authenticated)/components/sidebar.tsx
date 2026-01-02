@@ -95,7 +95,7 @@ const data: SidebarData = {
     },
     {
       title: "Bills",
-      url: "#",
+      url: "/bills",
       icon: ReceiptIcon,
     },
     {

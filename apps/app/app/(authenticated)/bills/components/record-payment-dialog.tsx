@@ -20,12 +20,12 @@ import {
 } from "@repo/design-system/components/ui/select";
 import { toast } from "sonner";
 import { useState, useTransition, useEffect } from "react";
-import { recordPayment } from "../actions";
+import { recordBillPayment } from "../actions";
 import { getPaymentModes } from "../../settings/actions";
 
 type RecordPaymentDialogProps = {
-  invoiceId: string | null;
-  invoiceNumber: string;
+  billId: string | null;
+  billNumber: string;
   balanceDue: number;
   currencyCode: string;
   onOpenChange: (open: boolean) => void;
@@ -33,8 +33,8 @@ type RecordPaymentDialogProps = {
 };
 
 export function RecordPaymentDialog({
-  invoiceId,
-  invoiceNumber,
+  billId,
+  billNumber,
   balanceDue,
   currencyCode,
   onOpenChange,
@@ -65,7 +65,7 @@ export function RecordPaymentDialog({
   }, []);
 
   const handleRecordPayment = () => {
-    if (!invoiceId) return;
+    if (!billId) return;
 
     const paymentAmount = Number.parseFloat(amount);
 
@@ -85,8 +85,8 @@ export function RecordPaymentDialog({
     }
 
     startTransition(async () => {
-      const result = await recordPayment({
-        id: invoiceId,
+      const result = await recordBillPayment({
+        id: billId,
         amount: paymentAmount,
         paymentDate,
         paymentModeId,
@@ -116,7 +116,7 @@ export function RecordPaymentDialog({
 
   return (
     <Dialog
-      open={!!invoiceId}
+      open={!!billId}
       onOpenChange={(open) => {
         if (!open) {
           setAmount("");
@@ -130,7 +130,7 @@ export function RecordPaymentDialog({
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
-            Enter the payment details for invoice <strong>"{invoiceNumber}"</strong>.
+            Enter the payment details for bill <strong>"{billNumber}"</strong>.
             <br />
             Balance Due: <strong>{formatCurrency(balanceDue)}</strong>
           </DialogDescription>
@@ -149,13 +149,13 @@ export function RecordPaymentDialog({
           </div>
 
           <div>
-            <Label htmlFor="payment-amount">Payment Amount</Label>
+            <Label htmlFor="amount">Amount</Label>
             <Input
-              id="payment-amount"
+              id="amount"
               type="number"
-              min="0.01"
-              max={balanceDue}
               step="0.01"
+              min="0"
+              max={balanceDue}
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -184,7 +184,7 @@ export function RecordPaymentDialog({
             <Input
               id="reference-number"
               type="text"
-              placeholder="Check #, Transaction ID, etc."
+              placeholder="Transaction ID, Check #, etc."
               value={referenceNumber}
               onChange={(e) => setReferenceNumber(e.target.value)}
               className="mt-2"
