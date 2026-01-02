@@ -6,6 +6,7 @@ import { getEvent } from "../actions";
 import { getTasks, getItineraries } from "./actions";
 import { getEstimates } from "../../estimates/actions";
 import { getInvoices } from "../../invoices/actions";
+import { getBills } from "../../bills/actions";
 import { getFinanceSettings, getServiceCategories } from "../../settings/actions";
 import { Header } from "../../components/header";
 import { EventOverviewCard } from "./components/event-overview-card";
@@ -18,6 +19,7 @@ import { ItinerarySheet } from "./components/itinerary-sheet";
 import { ItineraryTimeline } from "./components/itinerary-timeline";
 import { EstimatesClient } from "../../estimates/components/estimates-client";
 import { InvoicesClient } from "../../invoices/components/invoices-client";
+import { BillsClient } from "../../bills/components/bills-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/design-system/components/ui/tabs";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -69,6 +71,9 @@ export default function EventPage() {
 
   // Invoices state
   const [invoices, setInvoices] = useState<any[]>([]);
+
+  // Bills state
+  const [bills, setBills] = useState<any[]>([]);
 
   // Load event data
   useEffect(() => {
@@ -134,6 +139,19 @@ export default function EventPage() {
     };
 
     loadInvoices();
+  }, [id]);
+
+  // Load bills data for this event
+  useEffect(() => {
+    const loadBills = async () => {
+      const billsResult = await getBills(1, 100, "", id); // Filter by event ID
+      
+      if (billsResult.data) {
+        setBills(billsResult.data);
+      }
+    };
+
+    loadBills();
   }, [id]);
 
   // Load tasks data
@@ -260,9 +278,9 @@ export default function EventPage() {
             <TabsList className="inline-flex md:flex md:w-full h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
               <TabsTrigger value="tasks" className="whitespace-nowrap px-3 md:flex-1">Tasks</TabsTrigger>
               <TabsTrigger value="itinerary" className="whitespace-nowrap px-3 md:flex-1">Itinerary</TabsTrigger>
-              <TabsTrigger value="services" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
-              <TabsTrigger value="finances" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
-              <TabsTrigger value="vendors" className="whitespace-nowrap px-3 md:flex-1">Bills</TabsTrigger>
+              <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
+              <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
+              <TabsTrigger value="bills" className="whitespace-nowrap px-3 md:flex-1">Bills</TabsTrigger>
             </TabsList>
           </div>
 
@@ -376,7 +394,7 @@ export default function EventPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="services" className="space-y-4 mt-6">
+          <TabsContent value="estimates" className="space-y-4 mt-6">
             {event && (
               <EstimatesClient
                 initialEstimates={estimates}
@@ -396,7 +414,7 @@ export default function EventPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="finances" className="space-y-4 mt-6">
+          <TabsContent value="invoices" className="space-y-4 mt-6">
             {event && (
               <InvoicesClient
                 initialInvoices={invoices}
@@ -405,6 +423,7 @@ export default function EventPage() {
                 initialTotalPages={1}
                 initialCurrencyCode={currencyCode}
                 eventId={id}
+                hideEventColumn={true}
                 eventData={{
                   id: event.id,
                   clientId: event.clientId,
@@ -417,13 +436,22 @@ export default function EventPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="vendors" className="space-y-4 mt-6">
-            <div className="rounded-lg border p-8">
-              <h2 className="text-lg font-semibold mb-2">Vendors & Bills</h2>
-              <p className="text-sm text-muted-foreground">
-                Manage vendor relationships and bills for this event.
-              </p>
-            </div>
+          <TabsContent value="bills" className="space-y-4 mt-6">
+            {event && (
+              <BillsClient
+                initialBills={bills}
+                initialPage={1}
+                initialSearch=""
+                initialTotalPages={1}
+                initialCurrencyCode={currencyCode}
+                eventId={id}
+                hideEventColumn={true}
+                eventData={{
+                  id: event.id,
+                  name: event.name,
+                }}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>

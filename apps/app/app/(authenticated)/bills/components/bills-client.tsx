@@ -5,11 +5,11 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { PlusIcon, SearchIcon } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
-import { InvoicesTable } from "./invoices-table";
-import { InvoiceSheet } from "./invoice-sheet";
-import { getInvoices, getInvoicesStats } from "../actions";
+import { BillsTable } from "./bills-table";
+import { BillSheet } from "./bill-sheet";
+import { getBills, getBillsStats } from "../actions";
+import { getVendors } from "../../vendors/actions";
 import { getFinanceSettings, getServiceCategories } from "../../settings/actions";
-import type { InvoiceStatus } from "@/lib/invoice-calculations";
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -28,25 +28,56 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-type Invoice = {
+type Bill = {
   id: string;
   number: string;
-  status: InvoiceStatus;
-  billTo: string;
-  shipTo?: string | null;
-  invoiceDate: string;
-  dueDate: string;
-  poNumber?: string | null;
-  paymentTerms?: string | null;
-  notes?: string | null;
-  terms?: string | null;
+  vendorId: string;
+  serviceCategoryId: string;
+  eventId: string;
+  billDate: Date;
+  dueDate: Date;
+  amount: number;
+  attachmentUrl?: string | null;
+  status: "UNPAID" | "PARTIALLY_PAID" | "PAID";
   amountPaid: number;
   balanceDue: number;
-  createdAt: string;
-  client?: { name: string; email: string | null } | null;
-  event?: { name: string } | null;
-  lineItems: any[];
-  discount?: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  vendor: {
+    id: string;
+    companyName: string;
+    contactName: string | null;
+    email: string | null;
+  };
+  serviceCategory: {
+    id: string;
+    name: string;
+  };
+  event: {
+    id: string;
+    name: string;
+  };
+  paymentRecords: Array<{
+    id: string;
+    amount: number;
+    paymentDate: Date;
+    referenceNumber: string | null;
+    paymentMode: {
+      name: string;
+    };
+  }>;
+};
+
+type Vendor = {
+  id: string;
+  companyName: string;
+  services: Array<{
+    id: string;
+    service: {
+      id: string;
+      name: string;
+    };
+  }>;
 };
 
 type ServiceCategory = {
@@ -54,8 +85,8 @@ type ServiceCategory = {
   name: string;
 };
 
-type InvoicesClientProps = {
-  initialInvoices: Invoice[];
+type BillsClientProps = {
+  initialBills: Bill[];
   initialPage: number;
   initialSearch: string;
   initialTotalPages: number;
@@ -65,18 +96,14 @@ type InvoicesClientProps = {
   hideEventColumn?: boolean;
   eventData?: {
     id: string;
-    clientId: string;
     name: string;
-    venue?: string | null;
-    startDate: Date;
-    endDate: Date;
   };
 };
 
-type StatusFilterType = "ALL" | InvoiceStatus | "OVERDUE";
+type StatusFilterType = "ALL" | "UNPAID" | "PARTIALLY_PAID" | "PAID";
 
-export function InvoicesClient({
-  initialInvoices,
+export function BillsClient({
+  initialBills,
   initialPage,
   initialSearch,
   initialTotalPages,
@@ -85,19 +112,20 @@ export function InvoicesClient({
   eventId,
   hideEventColumn = false,
   eventData,
-}: InvoicesClientProps) {
+}: BillsClientProps) {
   const [isPending, startTransition] = useTransition();
 
   // State
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
-  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(initialInvoices);
+  const [bills, setBills] = useState<Bill[]>(initialBills);
+  const [filteredBills, setFilteredBills] = useState<Bill[]>(initialBills);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [sheetMode, setSheetMode] = useState<"create" | "view">("create");
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [sheetMode, setSheetMode] = useState<"create" | "view" | "edit">("create");
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [currencyCode, setCurrencyCode] = useState<string>(initialCurrencyCode);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<StatusFilterType>("ALL");
   const [stats, setStats] = useState<{
@@ -107,12 +135,13 @@ export function InvoicesClient({
     paid: number;
   } | null>(null);
 
-  // Fetch settings on mount
+  // Fetch settings and vendors on mount
   useEffect(() => {
-    const fetchSettings = async () => {
-      const [financeSettings, categoriesResult] = await Promise.all([
+    const fetchData = async () => {
+      const [financeSettings, categoriesResult, vendorsResult] = await Promise.all([
         getFinanceSettings(),
         getServiceCategories(),
+        getVendors({ limit: 1000 }),
       ]);
 
       if (financeSettings.data?.currencyCode) {
@@ -122,9 +151,13 @@ export function InvoicesClient({
       if (categoriesResult.data) {
         setServiceCategories(categoriesResult.data);
       }
+
+      if (vendorsResult.data) {
+        setVendors(vendorsResult.data);
+      }
     };
 
-    fetchSettings();
+    fetchData();
   }, []);
 
   // Fetch stats on mount
@@ -138,44 +171,34 @@ export function InvoicesClient({
   // Fetch data when search or page changes
   useEffect(() => {
     startTransition(async () => {
-      const result = await getInvoices(currentPage, 20, debouncedSearchQuery, eventId);
+      const result = await getBills(
+        currentPage,
+        20,
+        debouncedSearchQuery,
+        eventId,
+        selectedStatus === "ALL" ? undefined : selectedStatus
+      );
       if (result.data) {
-        const transformedInvoices = result.data.map((invoice) => ({
-          ...invoice,
-          createdAt: invoice.createdAt.toISOString(),
-          invoiceDate: invoice.invoiceDate.toISOString(),
-          dueDate: invoice.dueDate.toISOString(),
-          lineItems: (invoice.lineItems as any[]) || [],
-        }));
-        setInvoices(transformedInvoices);
-        setTotalPages(Math.ceil(transformedInvoices.length / 10));
+        setBills(result.data);
+        setTotalPages(Math.ceil(result.data.length / 10));
       }
     });
-  }, [debouncedSearchQuery, currentPage, eventId]);
+  }, [debouncedSearchQuery, currentPage, eventId, selectedStatus]);
 
   // Apply status filter
   useEffect(() => {
-    let filtered = invoices;
+    let filtered = bills;
 
     if (selectedStatus !== "ALL") {
-      if (selectedStatus === "OVERDUE") {
-        // Filter overdue invoices (unpaid or partially paid, and past due date)
-        filtered = invoices.filter((invoice) => {
-          const isOverdue = new Date(invoice.dueDate) < new Date();
-          const isNotPaid = invoice.status === "UNPAID" || invoice.status === "PARTIALLY_PAID";
-          return isOverdue && isNotPaid;
-        });
-      } else {
-        filtered = invoices.filter((invoice) => invoice.status === selectedStatus);
-      }
+      filtered = bills.filter((bill) => bill.status === selectedStatus);
     }
 
-    setFilteredInvoices(filtered);
-  }, [invoices, selectedStatus]);
+    setFilteredBills(filtered);
+  }, [bills, selectedStatus]);
 
   const loadStats = () => {
     startTransition(async () => {
-      const result = await getInvoicesStats();
+      const result = await getBillsStats();
       if (result.data) {
         setStats(result.data);
       }
@@ -183,48 +206,65 @@ export function InvoicesClient({
   };
 
   const handleCreateNew = () => {
-    setSelectedInvoice(null);
+    setSelectedBill(null);
     setSheetMode("create");
     setIsSheetOpen(true);
   };
 
-  const handleView = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
+  const handleBillClick = (bill: Bill) => {
+    setSelectedBill(bill);
     setSheetMode("view");
+    setIsSheetOpen(true);
+  };
+
+  const handleEditClick = (bill: Bill) => {
+    setSelectedBill(bill);
+    setSheetMode("edit");
     setIsSheetOpen(true);
   };
 
   const handleSheetClose = () => {
     setIsSheetOpen(false);
-    setSelectedInvoice(null);
+    setSelectedBill(null);
+    setSheetMode("create");
   };
 
-  const handleInvoiceSuccess = async () => {
+  const handleBillSuccess = async () => {
     // Refresh data after successful create/update
     handleSheetClose();
     startTransition(async () => {
-      const result = await getInvoices(currentPage, 20, debouncedSearchQuery, eventId);
+      const result = await getBills(
+        currentPage,
+        20,
+        debouncedSearchQuery,
+        eventId,
+        selectedStatus === "ALL" ? undefined : selectedStatus
+      );
       if (result.data) {
-        const transformedInvoices = result.data.map((invoice) => ({
-          ...invoice,
-          createdAt: invoice.createdAt.toISOString(),
-          invoiceDate: invoice.invoiceDate.toISOString(),
-          dueDate: invoice.dueDate.toISOString(),
-          lineItems: (invoice.lineItems as any[]) || [],
-        }));
-        setInvoices(transformedInvoices);
-        setTotalPages(Math.ceil(transformedInvoices.length / 10));
+        setBills(result.data);
+        setTotalPages(Math.ceil(result.data.length / 10));
       }
     });
     loadStats();
   };
 
-  // Calculate overdue count
-  const overdueCount = invoices.filter((invoice) => {
-    const isOverdue = new Date(invoice.dueDate) < new Date();
-    const isNotPaid = invoice.status === "UNPAID" || invoice.status === "PARTIALLY_PAID";
-    return isOverdue && isNotPaid;
-  }).length;
+  const handleDeleteSuccess = async () => {
+    // Refresh data after successful delete
+    startTransition(async () => {
+      const result = await getBills(
+        currentPage,
+        20,
+        debouncedSearchQuery,
+        eventId,
+        selectedStatus === "ALL" ? undefined : selectedStatus
+      );
+      if (result.data) {
+        setBills(result.data);
+        setTotalPages(Math.ceil(result.data.length / 10));
+      }
+    });
+    loadStats();
+  };
 
   if (error) {
     return (
@@ -243,7 +283,7 @@ export function InvoicesClient({
             <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search invoices..."
+              placeholder="Search bills..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -254,7 +294,7 @@ export function InvoicesClient({
           </div>
           <Button onClick={handleCreateNew}>
             <PlusIcon className="mr-2 h-4 w-4" />
-            Create Invoice
+            Add Bill
           </Button>
         </div>
 
@@ -288,28 +328,22 @@ export function InvoicesClient({
           >
             Paid {stats && `(${stats.paid})`}
           </Badge>
-          <Badge
-            variant={selectedStatus === "OVERDUE" ? "default" : "outline"}
-            className="cursor-pointer"
-            onClick={() => setSelectedStatus("OVERDUE")}
-          >
-            Overdue ({overdueCount})
-          </Badge>
         </div>
       </div>
 
-      {/* Invoices Table */}
-      <InvoicesTable
-        invoices={filteredInvoices}
-        onView={handleView}
+      {/* Bills Table */}
+      <BillsTable
+        bills={filteredBills}
         isLoading={isPending}
+        onBillClick={handleBillClick}
+        onEditClick={handleEditClick}
+        onDeleteSuccess={handleDeleteSuccess}
         currencyCode={currencyCode}
-        onUpdate={handleInvoiceSuccess}
         hideEventColumn={hideEventColumn}
       />
 
       {/* Pagination */}
-      {filteredInvoices.length === 20 && (
+      {filteredBills.length === 20 && (
         <div className="flex justify-center gap-2">
           {currentPage > 1 && (
             <Button
@@ -330,15 +364,16 @@ export function InvoicesClient({
         </div>
       )}
 
-      {/* Invoice Sheet */}
-      <InvoiceSheet
+      {/* Bill Sheet */}
+      <BillSheet
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
-        invoice={selectedInvoice as any}
+        bill={selectedBill}
         mode={sheetMode}
-        onSuccess={handleInvoiceSuccess}
-        currencyCode={currencyCode}
+        onSuccess={handleBillSuccess}
+        vendors={vendors}
         serviceCategories={serviceCategories}
+        currencyCode={currencyCode}
         eventData={eventData}
       />
     </>
