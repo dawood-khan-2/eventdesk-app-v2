@@ -233,3 +233,183 @@ export async function getCSATScore() {
     return `${csatScore.toFixed(1)}%`;
   });
 }
+
+export async function getTopEventsWithOpenTasks() {
+  const { internalOrgId } = await getTenantContext();
+
+  return multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get ongoing/upcoming events with their tasks
+    const events = await prisma.event.findMany({
+      where: {
+        endDate: {
+          gte: today,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        tasks: {
+          select: {
+            status: true,
+          },
+        },
+      },
+    });
+
+    // Calculate stats for each event
+    const eventsWithStats = events
+      .map((event) => {
+        const totalTasks = event.tasks.length;
+        const openTasks = event.tasks.filter(
+          (task) => task.status !== "COMPLETED" && task.status !== "CANCELLED"
+        ).length;
+
+        // Only include events that have at least 1 task
+        if (totalTasks === 0) return null;
+
+        const percentage = (openTasks / totalTasks) * 100;
+
+        return {
+          id: event.id,
+          name: event.name,
+          openTasks,
+          percentage: Math.round(percentage),
+        };
+      })
+      .filter((event) => event !== null) as Array<{
+        id: string;
+        name: string;
+        openTasks: number;
+        percentage: number;
+      }>;
+
+    // Sort by number of open tasks (descending) and take top 3
+    return eventsWithStats.sort((a, b) => b.openTasks - a.openTasks).slice(0, 3);
+  });
+}
+
+export async function getTopEventsWithOverdueTasks() {
+  const { internalOrgId } = await getTenantContext();
+
+  return multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get ongoing/upcoming events with their tasks
+    const events = await prisma.event.findMany({
+      where: {
+        endDate: {
+          gte: today,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        tasks: {
+          select: {
+            status: true,
+            dueDate: true,
+          },
+        },
+      },
+    });
+
+    // Calculate stats for each event
+    const eventsWithStats = events
+      .map((event) => {
+        const openTasks = event.tasks.filter(
+          (task) => task.status !== "COMPLETED" && task.status !== "CANCELLED"
+        );
+        
+        const overdueTasks = openTasks.filter(
+          (task) => task.dueDate && task.dueDate < today
+        ).length;
+
+        // Only include events that have open tasks and at least 1 overdue task
+        if (openTasks.length === 0 || overdueTasks === 0) return null;
+
+        const percentage = (overdueTasks / openTasks.length) * 100;
+
+        return {
+          id: event.id,
+          name: event.name,
+          percentage: Math.round(percentage),
+        };
+      })
+      .filter((event) => event !== null) as Array<{
+        id: string;
+        name: string;
+        percentage: number;
+      }>;
+
+    // Sort by percentage (descending) and take top 3
+    return eventsWithStats.sort((a, b) => b.percentage - a.percentage).slice(0, 3);
+  });
+}
+
+export async function getTopEventsWithIdleTasks() {
+  const { internalOrgId } = await getTenantContext();
+
+  return multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    // Get ongoing/upcoming events with their tasks
+    const events = await prisma.event.findMany({
+      where: {
+        endDate: {
+          gte: today,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        tasks: {
+          select: {
+            status: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    // Calculate stats for each event
+    const eventsWithStats = events
+      .map((event) => {
+        const openTasks = event.tasks.filter(
+          (task) => task.status !== "COMPLETED" && task.status !== "CANCELLED"
+        );
+        
+        const idleTasks = openTasks.filter(
+          (task) => task.updatedAt < weekAgo
+        ).length;
+
+        // Only include events that have open tasks and at least 1 idle task
+        if (openTasks.length === 0 || idleTasks === 0) return null;
+
+        const percentage = (idleTasks / openTasks.length) * 100;
+
+        return {
+          id: event.id,
+          name: event.name,
+          idleTasks,
+          percentage: Math.round(percentage),
+        };
+      })
+      .filter((event) => event !== null) as Array<{
+        id: string;
+        name: string;
+        idleTasks: number;
+        percentage: number;
+      }>;
+
+    // Sort by number of idle tasks (descending) and take top 3
+    return eventsWithStats.sort((a, b) => b.idleTasks - a.idleTasks).slice(0, 3);
+  });
+}
