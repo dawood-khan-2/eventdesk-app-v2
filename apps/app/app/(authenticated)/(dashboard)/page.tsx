@@ -8,7 +8,7 @@ import { AvatarStack } from "../components/avatar-stack";
 import { Cursors } from "../components/cursors";
 import { Header } from "../components/header";
 import { StatCard } from "./components/stat-card";
-import { getEventsThisWeek, getOpenTasksCount, getBudgetUtilization, getBillsDue, getLeadConversionRate } from "./actions";
+import { getEventsThisWeek, getOpenTasksCount, getBudgetUtilization, getBillsDue, getLeadConversionRate, getCSATScore } from "./actions";
 
 const title = "EventDesk";
 const description = "All-in-One Event Management Platform";
@@ -36,6 +36,7 @@ const App = async () => {
   const budgetUtilization = await getBudgetUtilization();
   const billsDue = await getBillsDue();
   const leadConversionRate = await getLeadConversionRate();
+  const csatScore = await getCSATScore();
 
   return (
     <>
@@ -71,7 +72,7 @@ const App = async () => {
           />
           <StatCard
             title="CSAT Score"
-            value="64%"
+            value={csatScore}
             icon={Smile}
           />
           <StatCard

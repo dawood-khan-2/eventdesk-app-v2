@@ -202,3 +202,34 @@ export async function getLeadConversionRate() {
     return `${conversionRate.toFixed(1)}%`;
   });
 }
+
+export async function getCSATScore() {
+  const { internalOrgId } = await getTenantContext();
+
+  // Tenant-scoped query
+  return multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+    // Get all events with ratings
+    const ratedEvents = await prisma.event.findMany({
+      where: {
+        rating: {
+          not: null,
+        },
+      },
+      select: {
+        rating: true,
+      },
+    });
+
+    // If no events have been rated yet
+    if (ratedEvents.length === 0) {
+      return "N/A";
+    }
+
+    // Calculate CSAT Score
+    const totalRating = ratedEvents.reduce((sum, event) => sum + (event.rating || 0), 0);
+    const maxPossibleRating = ratedEvents.length * 5;
+    const csatScore = (totalRating / maxPossibleRating) * 100;
+
+    return `${csatScore.toFixed(1)}%`;
+  });
+}
