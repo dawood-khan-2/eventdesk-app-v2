@@ -3,6 +3,7 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Card, CardContent } from "@repo/design-system/components/ui/card";
+import { calculateEstimateTotal } from "../../lib/estimate-helpers";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,28 +73,7 @@ const statusLabels = {
   EXPIRED: "Expired",
 } as const;
 
-function calculateTotal(lineItems: any[], discount: number = 0): number {
-  // Calculate subtotal
-  const subtotal = lineItems.reduce((sum, item) => {
-    return sum + (item.quantity * item.rate);
-  }, 0);
-  
-  // Calculate discount amount
-  const discountAmount = subtotal * (discount / 100);
-  
-  // Calculate subtotal after discount
-  const subtotalAfterDiscount = subtotal - discountAmount;
-  
-  // Calculate tax on discounted amount
-  const tax = subtotal === 0 ? 0 : lineItems.reduce((sum, item) => {
-    const itemSubtotal = item.quantity * item.rate;
-    const itemAfterDiscount = itemSubtotal * (subtotalAfterDiscount / subtotal);
-    return sum + (itemAfterDiscount * (item.tax / 100));
-  }, 0);
-  
-  // Return total: subtotal - discount + tax
-  return subtotal - discountAmount + tax;
-}
+const calculateTotal = calculateEstimateTotal;
 
 function formatCurrency(amount: number, currencyCode: string = "USD"): string {
   return new Intl.NumberFormat("en-US", {

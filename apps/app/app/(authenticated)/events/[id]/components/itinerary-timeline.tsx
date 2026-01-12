@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/design-system/components/ui/tabs";
 import { Button } from "@repo/design-system/components/ui/button";
-import { Timeline, TimelineItem } from "./timeline";
+import { Timeline, TimelineItem } from "../../../../../components/timeline";
 import { ItineraryEditDialog, ItineraryDeleteDialog } from "./itinerary-actions";
 import { Clock, Pencil, Trash2 } from "lucide-react";
 import { format, isSameDay, differenceInDays } from "date-fns";

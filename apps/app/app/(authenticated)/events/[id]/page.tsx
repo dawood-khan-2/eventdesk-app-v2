@@ -20,6 +20,7 @@ import { ItineraryTimeline } from "./components/itinerary-timeline";
 import { EstimatesClient } from "../../estimates/components/estimates-client";
 import { InvoicesClient } from "../../invoices/components/invoices-client";
 import { BillsClient } from "../../bills/components/bills-client";
+import { FeedbackTab } from "./components/feedback-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/design-system/components/ui/tabs";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -281,6 +282,7 @@ export default function EventPage() {
               <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
               <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
               <TabsTrigger value="bills" className="whitespace-nowrap px-3 md:flex-1">Bills</TabsTrigger>
+              <TabsTrigger value="feedback" className="whitespace-nowrap px-3 md:flex-1">Feedback</TabsTrigger>
             </TabsList>
           </div>
 
@@ -452,6 +454,16 @@ export default function EventPage() {
                 }}
               />
             )}
+          </TabsContent>
+
+          <TabsContent value="feedback" className="mt-6">
+            <FeedbackTab
+              eventId={id}
+              eventName={event.name}
+              endDate={event.endDate ? new Date(event.endDate) : null}
+              rating={event.rating}
+              comments={event.comments}
+            />
           </TabsContent>
         </Tabs>
       </div>

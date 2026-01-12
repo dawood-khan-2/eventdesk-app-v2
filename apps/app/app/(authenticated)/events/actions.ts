@@ -4,7 +4,11 @@ import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId } from "../lib/auth-helpers";
+import { SignJWT } from "jose";
+import { resend } from "@repo/email";
+import { FeedbackRequestTemplate } from "@repo/email/templates/feedback-request";
+import { env } from "@/env";
+import { getInternalOrgId, getTenantContext } from "../lib/auth-helpers";
 
 /**
  * Event filter types
@@ -557,6 +561,127 @@ export async function getEstimatesForLeadOrClient(id: string, type: "lead" | "cl
     return { data: estimates };
   } catch (error) {
     console.error("Failed to get estimates:", error);
+    return { error: "Failed to fetch estimates" };
+  }
+}
+
+/**
+ * Generate JWT token for feedback request
+ */
+export async function generateFeedbackToken(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Create JWT token with eventId and tenantId
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+    const token = await new SignJWT({ 
+      eventId, 
+      tenantId: internalOrgId 
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("48h") // Token expires in 48 hours
+      .sign(secret);
+
+    return { data: token };
+  } catch (error) {
+    console.error("Failed to generate feedback token:", error);
+    return { error: "Failed to generate token" };
+  }
+}
+
+/**
+ * Request feedback for an event
+ */
+export async function requestFeedback(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Fetch event details
+    const event = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
+      prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          id: true,
+          name: true,
+          venue: true,
+          startDate: true,
+          endDate: true,
+          rating: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      })
+    );
+
+    if (!event) {
+      return { error: "Event not found" };
+    }
+
+    // Check if event has ended
+    if (!event.endDate || event.endDate > new Date()) {
+      return { error: "Cannot request feedback for an ongoing or upcoming event" };
+    }
+
+    // Check if feedback already submitted
+    if (event.rating !== null) {
+      return { error: "Feedback has already been submitted for this event" };
+    }
+
+    // Check if client has email
+    if (!event.client.email) {
+      return { error: "Client email not found" };
+    }
+
+    // Generate token
+    const tokenResult = await generateFeedbackToken(eventId);
+    if (tokenResult.error || !tokenResult.data) {
+      return { error: tokenResult.error || "Failed to generate token" };
+    }
+
+    // Send email
+    const feedbackUrl = `${env.NEXT_PUBLIC_APP_URL}/feedback/${eventId}?token=${tokenResult.data}`;
+    
+    // Format event date
+    const eventDate = event.startDate.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }) + (event.endDate && event.endDate.getTime() !== event.startDate.getTime() 
+      ? ` - ${event.endDate.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}`
+      : "");
+    
+    const { error: emailError } = await resend.emails.send({
+      from: env.RESEND_FROM,
+      to: event.client.email,
+      subject: `Share your feedback for ${event.name}`,
+      react: FeedbackRequestTemplate({
+        eventName: event.name,
+        clientName: event.client.name,
+        eventVenue: event.venue || undefined,
+        eventDate,
+        feedbackUrl,
+      }),
+    });
+
+    if (emailError) {
+      console.error("Failed to send feedback email:", emailError);
+      return { error: "Failed to send feedback email" };
+    }
+
+    revalidatePath(`/events/${eventId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to request feedback:", error);
     return { error: "Failed to get estimates" };
   }
 }
