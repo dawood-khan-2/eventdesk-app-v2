@@ -1,6 +1,6 @@
 "use client";
 
-import { Funnel, FunnelChart, LabelList, Tooltip } from "recharts";
+import { Funnel, FunnelChart, LabelList, Tooltip, Cell } from "recharts";
 import { Card } from "@repo/design-system/components/ui/card";
 import { ChartContainer } from "@repo/design-system/components/ui/chart";
 
@@ -17,7 +17,20 @@ interface LeadsFunnelChartProps {
   };
 }
 
+// Color scheme for funnel stages (progressing from blue to green)
+const FUNNEL_COLORS = [
+  "hsl(217, 91%, 60%)", // Blue - New
+  "hsl(207, 89%, 54%)", // Light Blue - Contacted
+  "hsl(197, 71%, 52%)", // Cyan - Proposal Sent
+  "hsl(173, 58%, 39%)", // Teal - Follow Up
+  "hsl(142, 71%, 45%)", // Green - Converted
+];
+
 export function LeadsFunnelChart({ data, metrics }: LeadsFunnelChartProps) {
+  // Filter out stages with 0 values to ensure funnel displays properly
+  // Recharts Funnel can have issues rendering stages with 0 values
+  const filteredData = data.filter(stage => stage.value > 0);
+  
   return (
     <div className="space-y-4">
       <ChartContainer
@@ -31,7 +44,10 @@ export function LeadsFunnelChart({ data, metrics }: LeadsFunnelChartProps) {
       >
         <FunnelChart>
           <Tooltip />
-          <Funnel dataKey="value" data={data} isAnimationActive>
+          <Funnel dataKey="value" data={filteredData} isAnimationActive>
+            {filteredData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
+            ))}
             <LabelList position="center" fill="#fff" stroke="none" dataKey="name" />
           </Funnel>
         </FunnelChart>

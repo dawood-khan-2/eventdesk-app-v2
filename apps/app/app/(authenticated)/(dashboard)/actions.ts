@@ -102,12 +102,18 @@ export async function getBudgetUtilization() {
       return sum + calculateEstimateTotal(lineItems, discount);
     }, 0);
 
-    // Calculate utilization percentage
-    if (totalEstimates === 0) {
+    // Calculate utilization percentage with NaN safeguards
+    if (!totalEstimates || totalEstimates === 0 || !Number.isFinite(totalEstimates)) {
       return "N/A";
     }
 
     const utilization = (totalBills / totalEstimates) * 100;
+    
+    // Additional check to ensure we never return NaN or Infinity
+    if (!Number.isFinite(utilization)) {
+      return "N/A";
+    }
+
     return `${Math.round(utilization)}%`;
   });
 }

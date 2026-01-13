@@ -27,11 +27,13 @@ export function calculateEstimateTotal(lineItems: any[], discount: number = 0): 
   // Calculate subtotal after discount
   const subtotalAfterDiscount = subtotal - discountAmount;
   
-  // Calculate tax on discounted amount
+  // Calculate tax on discounted amount (if tax exists)
   const tax = subtotal === 0 ? 0 : lineItems.reduce((sum, item) => {
+    // Default to 0 if tax field is missing
+    const itemTax = item.tax || 0;
     const itemSubtotal = item.quantity * item.rate;
     const itemAfterDiscount = itemSubtotal * (subtotalAfterDiscount / subtotal);
-    return sum + (itemAfterDiscount * (item.tax / 100));
+    return sum + (itemAfterDiscount * (itemTax / 100));
   }, 0);
   
   // Return total: subtotal - discount + tax
