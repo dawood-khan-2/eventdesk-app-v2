@@ -4,7 +4,7 @@ import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId } from "../../lib/auth-helpers";
+import { getInternalOrgId, getTenantContext } from "../../lib/auth-helpers";
 
 /**
  * Validation Schema for Task Creation
@@ -704,5 +704,43 @@ export async function deleteItinerary(id: string) {
     }
     
     return { error: "Failed to delete itinerary" };
+  }
+}
+
+/**
+ * Get all guests for a specific event
+ */
+export async function getGuests(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Fetch guests
+    const guests = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // Verify event exists and belongs to this organization
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { id: true },
+      });
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      // Get all guests for this event
+      return await prisma.guests.findMany({
+        where: { eventId },
+        orderBy: { createdAt: "desc" },
+      });
+    });
+
+    return { data: guests };
+  } catch (error) {
+    console.error("Failed to fetch guests:", error);
+    
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to fetch guests" };
   }
 }

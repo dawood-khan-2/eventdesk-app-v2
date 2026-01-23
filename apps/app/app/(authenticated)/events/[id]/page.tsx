@@ -2,8 +2,8 @@
 
 import { notFound, useParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
-import { getEvent } from "../actions";
-import { getTasks, getItineraries } from "./actions";
+import { getEvent, sendRegistrationLink } from "../actions";
+import { getTasks, getItineraries, getGuests } from "./actions";
 import { getEstimates } from "../../estimates/actions";
 import { getInvoices } from "../../invoices/actions";
 import { getBills } from "../../bills/actions";
@@ -17,6 +17,7 @@ import { TaskEditDialog } from "./components/task-edit-dialog";
 import { TasksTable } from "./components/tasks-table";
 import { ItinerarySheet } from "./components/itinerary-sheet";
 import { ItineraryTimeline } from "./components/itinerary-timeline";
+import { GuestsTable } from "./components/guests-table";
 import { EstimatesClient } from "../../estimates/components/estimates-client";
 import { InvoicesClient } from "../../invoices/components/invoices-client";
 import { BillsClient } from "../../bills/components/bills-client";
@@ -30,7 +31,18 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@repo/design-system/components/ui/accordion";
-import { Plus, Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/design-system/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { Plus, Search, Mail } from "lucide-react";
 
 export default function EventPage() {
   const params = useParams();
@@ -43,6 +55,8 @@ export default function EventPage() {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
   const [isItinerarySheetOpen, setIsItinerarySheetOpen] = useState(false);
+  const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
+  const [isSendingRegistration, setIsSendingRegistration] = useState(false);
   const [tasksRefreshKey, setTasksRefreshKey] = useState(0);
   
   // Task edit dialog state
@@ -64,6 +78,11 @@ export default function EventPage() {
   const [isLoadingItineraries, setIsLoadingItineraries] = useState(false);
   const [itinerariesRefreshKey, setItinerariesRefreshKey] = useState(0);
   const [itinerarySearchQuery, setItinerarySearchQuery] = useState("");
+
+  // Guests state
+  const [guests, setGuests] = useState<any[]>([]);
+  const [isLoadingGuests, setIsLoadingGuests] = useState(false);
+  const [guestsSearchQuery, setGuestsSearchQuery] = useState("");
 
   // Estimates state
   const [estimates, setEstimates] = useState<any[]>([]);
@@ -185,6 +204,21 @@ export default function EventPage() {
     loadItineraries();
   }, [id, itinerariesRefreshKey]);
 
+  // Load guests data
+  useEffect(() => {
+    const loadGuests = async () => {
+      setIsLoadingGuests(true);
+      const result = await getGuests(id);
+      
+      if (result.data) {
+        setGuests(result.data);
+      }
+      setIsLoadingGuests(false);
+    };
+
+    loadGuests();
+  }, [id]);
+
   const handleSheetSuccess = () => {
     setIsSheetOpen(false);
     // Reload event data
@@ -237,6 +271,20 @@ export default function EventPage() {
     setItinerariesRefreshKey(prev => prev + 1);
   };
 
+  // Handle send registration link
+  const handleSendRegistrationLink = async () => {
+    setIsSendingRegistration(true);
+    const result = await sendRegistrationLink(id);
+    setIsSendingRegistration(false);
+    setIsRegistrationDialogOpen(false);
+
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Registration link has been sent to the client's email.");
+    }
+  };
+
   // Filter tasks by search query
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -279,6 +327,7 @@ export default function EventPage() {
             <TabsList className="inline-flex md:flex md:w-full h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
               <TabsTrigger value="tasks" className="whitespace-nowrap px-3 md:flex-1">Tasks</TabsTrigger>
               <TabsTrigger value="itinerary" className="whitespace-nowrap px-3 md:flex-1">Itinerary</TabsTrigger>
+              <TabsTrigger value="guests" className="whitespace-nowrap px-3 md:flex-1">Guests</TabsTrigger>
               <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
               <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
               <TabsTrigger value="bills" className="whitespace-nowrap px-3 md:flex-1">Bills</TabsTrigger>
@@ -392,6 +441,43 @@ export default function EventPage() {
                 eventStartDate={event?.startDate || new Date()}
                 eventEndDate={event?.endDate || new Date()}
                 onRefresh={() => setItinerariesRefreshKey(prev => prev + 1)}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="guests" className="space-y-4 mt-6">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 mb-4">
+              <div className="relative flex-1 sm:flex-initial sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search guests..."
+                  value={guestsSearchQuery}
+                  onChange={(e) => setGuestsSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button 
+                onClick={() => setIsRegistrationDialogOpen(true)} 
+                className="w-full sm:w-auto"
+                variant="outline"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Send Registration Link
+              </Button>
+            </div>
+            
+            {isLoadingGuests ? (
+              <div className="rounded-lg border p-8">
+                <p className="text-sm text-muted-foreground">Loading guests...</p>
+              </div>
+            ) : (
+              <GuestsTable
+                guests={guests.filter(guest => 
+                  guest.name.toLowerCase().includes(guestsSearchQuery.toLowerCase()) ||
+                  guest.email.toLowerCase().includes(guestsSearchQuery.toLowerCase()) ||
+                  (guest.phone && guest.phone.toLowerCase().includes(guestsSearchQuery.toLowerCase()))
+                )}
               />
             )}
           </TabsContent>
@@ -517,6 +603,28 @@ export default function EventPage() {
         onOpenChange={setIsSwitcherOpen}
         currentEventId={id}
       />
+
+      {/* Registration Link Confirmation Dialog */}
+      <AlertDialog open={isRegistrationDialogOpen} onOpenChange={setIsRegistrationDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Registration Link</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send the event registration link to the client's email address. 
+              The client can then share this link with potential guests to allow them to register for the event.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSendingRegistration}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleSendRegistrationLink}
+              disabled={isSendingRegistration}
+            >
+              {isSendingRegistration ? "Sending..." : "Send Link"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

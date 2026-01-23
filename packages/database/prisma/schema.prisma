@@ -249,6 +249,7 @@ model Event {
   itineraries     Itinerary[]
   invoices        Invoice[]
   bills           Bill[]
+  guests          Guests[]
 
   @@map("events")
   @@index([tenantId])
@@ -496,4 +497,25 @@ model Bill {
   @@index([tenantId])
 }
 
-  
+model Guests{
+  tenantId      String
+  id            String          @id @default(cuid())
+  eventId       String
+
+  name          String
+  email         String
+  phone         String?
+
+  // Audit fields
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  event         Event       @relation(fields: [eventId], references: [id])
+
+  @@map("guests")
+  @@index([tenantId])
+  @@index([eventId])
+}
+
+

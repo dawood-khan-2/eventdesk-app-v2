@@ -7,6 +7,7 @@ import { z } from "zod";
 import { SignJWT } from "jose";
 import { resend } from "@repo/email";
 import { FeedbackRequestTemplate } from "@repo/email/templates/feedback-request";
+import { RegistrationLinkTemplate } from "@repo/email/templates/registration-link";
 import { env } from "@/env";
 import { getInternalOrgId, getTenantContext } from "../lib/auth-helpers";
 
@@ -591,6 +592,31 @@ export async function generateFeedbackToken(eventId: string) {
 }
 
 /**
+ * Generate JWT token for guest registration
+ */
+export async function generateRegistrationToken(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Create JWT token with eventId and tenantId
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+    const token = await new SignJWT({ 
+      eventId, 
+      tenantId: internalOrgId 
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("30d") // Token expires in 30 days
+      .sign(secret);
+
+    return { data: token };
+  } catch (error) {
+    console.error("Failed to generate registration token:", error);
+    return { error: "Failed to generate token" };
+  }
+}
+
+/**
  * Request feedback for an event
  */
 export async function requestFeedback(eventId: string) {
@@ -683,5 +709,95 @@ export async function requestFeedback(eventId: string) {
   } catch (error) {
     console.error("Failed to request feedback:", error);
     return { error: "Failed to get estimates" };
+  }
+}
+
+/**
+ * Send registration link for an event
+ */
+export async function sendRegistrationLink(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Fetch event details
+    const event = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
+      prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          id: true,
+          name: true,
+          venue: true,
+          startDate: true,
+          endDate: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      })
+    );
+
+    if (!event) {
+      return { error: "Event not found" };
+    }
+
+    // Check if event has ended
+    if (event.endDate && event.endDate < new Date()) {
+      return { error: "Cannot send registration link for a past event" };
+    }
+
+    // Check if client has email
+    if (!event.client.email) {
+      return { error: "Client email not found" };
+    }
+
+    // Generate token
+    const tokenResult = await generateRegistrationToken(eventId);
+    if (tokenResult.error || !tokenResult.data) {
+      return { error: tokenResult.error || "Failed to generate token" };
+    }
+
+    // Send email
+    const registrationUrl = `${env.NEXT_PUBLIC_APP_URL}/register/${eventId}?token=${tokenResult.data}`;
+    
+    // Format event date
+    const eventDate = event.startDate.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }) + (event.endDate && event.endDate.getTime() !== event.startDate.getTime() 
+      ? ` - ${event.endDate.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}`
+      : "");
+    
+    const { error: emailError } = await resend.emails.send({
+      from: env.RESEND_FROM,
+      to: event.client.email,
+      subject: `Registration link for ${event.name}`,
+      react: RegistrationLinkTemplate({
+        eventName: event.name,
+        clientName: event.client.name,
+        eventVenue: event.venue || undefined,
+        eventDate,
+        registrationUrl,
+      }),
+    });
+
+    if (emailError) {
+      console.error("Failed to send registration email:", emailError);
+      return { error: "Failed to send registration email" };
+    }
+
+    revalidatePath(`/events/${eventId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send registration link:", error);
+    return { error: "Failed to send registration link" };
   }
 }
