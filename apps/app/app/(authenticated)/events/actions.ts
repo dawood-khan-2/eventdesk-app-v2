@@ -28,6 +28,8 @@ const createEventSchema = z.object({
   description: z.string().optional().or(z.literal("")),
   startDate: z.string().datetime("Invalid start date"),
   endDate: z.string().datetime("Invalid end date"),
+  maxGuests: z.number().int().positive().optional(),
+  registrationEndDate: z.string().datetime("Invalid registration end date").optional(),
 }).refine(
   (data) => {
     const start = new Date(data.startDate);
@@ -51,12 +53,14 @@ const createEventSchema = z.object({
 );
 
 const updateEventSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string().min(1),
   name: z.string().min(1, "Event name is required").max(255).optional(),
   venue: z.string().max(500).optional().or(z.literal("")),
   description: z.string().optional().or(z.literal("")),
   startDate: z.string().datetime("Invalid start date").optional(),
   endDate: z.string().datetime("Invalid end date").optional(),
+  maxGuests: z.number().int().positive().optional(),
+  registrationEndDate: z.string().datetime("Invalid registration end date").optional(),
 }).refine(
   (data) => {
     // Only validate dates if both are provided
@@ -324,6 +328,7 @@ export async function getEvent(id: string) {
           client: {
             select: {
               name: true,
+              email: true,
             },
           },
         },
@@ -366,6 +371,8 @@ export async function updateEvent(data: z.infer<typeof updateEventSchema>) {
     if (updateData.description !== undefined) dataToUpdate.description = updateData.description || null;
     if (updateData.startDate !== undefined) dataToUpdate.startDate = new Date(updateData.startDate);
     if (updateData.endDate !== undefined) dataToUpdate.endDate = new Date(updateData.endDate);
+    if (updateData.maxGuests !== undefined) dataToUpdate.maxGuests = updateData.maxGuests || null;
+    if (updateData.registrationEndDate !== undefined) dataToUpdate.registrationEndDate = updateData.registrationEndDate ? new Date(updateData.registrationEndDate) : null;
 
     // Update event with tenant context (RLS ensures we can only update our own events)
     const event = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -376,6 +383,7 @@ export async function updateEvent(data: z.infer<typeof updateEventSchema>) {
           client: {
             select: {
               name: true,
+              email: true,
             },
           },
         },
@@ -598,6 +606,47 @@ export async function generateRegistrationToken(eventId: string) {
   try {
     const { internalOrgId } = await getTenantContext();
 
+    // Fetch event to get registration deadline
+    const event = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
+      prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          registrationEndDate: true,
+          endDate: true,
+        },
+      })
+    );
+
+    if (!event) {
+      return { error: "Event not found" };
+    }
+
+    // Determine token expiration with buffer for better error messages
+    // We add a 30-day buffer so the token remains valid even after the deadline,
+    // allowing our application logic to provide meaningful error messages
+    // instead of generic "Invalid token" errors
+    let expirationTime: string | Date;
+    const now = new Date();
+
+    if (event.registrationEndDate) {
+      // If registration deadline exists, check if it has already passed
+      if (event.registrationEndDate <= now) {
+        return { error: "Registration deadline has already passed" };
+      }
+      // Add 30-day buffer beyond registration deadline (industry standard)
+      const bufferDate = new Date(event.registrationEndDate);
+      bufferDate.setDate(bufferDate.getDate() + 30);
+      expirationTime = bufferDate;
+    } else if (event.endDate) {
+      // Fall back to event end date + 30-day buffer
+      const bufferDate = new Date(event.endDate);
+      bufferDate.setDate(bufferDate.getDate() + 30);
+      expirationTime = bufferDate;
+    } else {
+      // Fall back to 30 days if neither is set
+      expirationTime = "30d";
+    }
+
     // Create JWT token with eventId and tenantId
     const secret = new TextEncoder().encode(env.JWT_SECRET);
     const token = await new SignJWT({ 
@@ -606,7 +655,7 @@ export async function generateRegistrationToken(eventId: string) {
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
-      .setExpirationTime("30d") // Token expires in 30 days
+      .setExpirationTime(expirationTime)
       .sign(secret);
 
     return { data: token };

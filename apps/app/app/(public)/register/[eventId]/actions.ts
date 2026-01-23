@@ -43,6 +43,8 @@ export async function validateRegistrationToken(token: string, eventId: string) 
           venue: true,
           startDate: true,
           endDate: true,
+          registrationEndDate: true,
+          maxGuests: true,
           client: {
             select: {
               id: true,
@@ -57,10 +59,10 @@ export async function validateRegistrationToken(token: string, eventId: string) 
       return { error: "Event not found" };
     }
 
-    // Check if event is in the past
+    // Check if registration deadline has passed
     const now_date = new Date();
-    if (event.endDate < now_date) {
-      return { error: "Registration is closed for this event" };
+    if (event.registrationEndDate && event.registrationEndDate < now_date) {
+      return { error: "Registration deadline has passed" };
     }
 
     return { 
@@ -113,9 +115,20 @@ export async function registerGuest(
     // Validate input
     const validatedData = guestRegistrationSchema.parse(data);
 
+    // Check capacity before registering (moved here to avoid blocking after successful registration)
+    if (validationResult.data.event.maxGuests) {
+      const guestCount = await multiTenantDb.forTenant(tenantId).run((prisma) =>
+        prisma.guest.count({ where: { eventId } })
+      );
+
+      if (guestCount >= validationResult.data.event.maxGuests) {
+        return { error: "This event has reached maximum capacity" };
+      }
+    }
+
     // Create guest registration
     const guest = await multiTenantDb.forTenant(tenantId).run((prisma) =>
-      prisma.guests.create({
+      prisma.guest.create({
         data: {
           tenantId,
           eventId,
@@ -124,7 +137,7 @@ export async function registerGuest(
           phone: validatedData.phone || null,
         },
       })
-    );
+    ) as { id: string };
 
     revalidatePath(`/events/${eventId}`);
 

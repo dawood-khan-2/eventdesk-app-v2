@@ -237,6 +237,10 @@ model Event {
   rating        Int?     // 1-5 star rating (nullable until submitted)
   comments      String?  // Optional feedback text
 
+  // Guest Manangement
+  maxGuests             Int?        // Maximum number of guests allowed (nullable for unlimited)
+  registrationEndDate   DateTime?   // Deadline for guest registration
+
   // Audit fields
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -249,7 +253,7 @@ model Event {
   itineraries     Itinerary[]
   invoices        Invoice[]
   bills           Bill[]
-  guests          Guests[]
+  guests          Guest[]
 
   @@map("events")
   @@index([tenantId])
@@ -497,7 +501,7 @@ model Bill {
   @@index([tenantId])
 }
 
-model Guests{
+model Guest {
   tenantId      String
   id            String          @id @default(cuid())
   eventId       String
@@ -514,6 +518,7 @@ model Guests{
   event         Event       @relation(fields: [eventId], references: [id])
 
   @@map("guests")
+  @@unique([eventId, email])
   @@index([tenantId])
   @@index([eventId])
 }

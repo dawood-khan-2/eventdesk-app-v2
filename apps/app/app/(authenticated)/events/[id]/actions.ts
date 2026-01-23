@@ -727,7 +727,7 @@ export async function getGuests(eventId: string) {
       }
 
       // Get all guests for this event
-      return await prisma.guests.findMany({
+      return await prisma.guest.findMany({
         where: { eventId },
         orderBy: { createdAt: "desc" },
       });

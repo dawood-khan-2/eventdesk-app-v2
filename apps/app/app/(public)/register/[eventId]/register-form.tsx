@@ -16,6 +16,7 @@ type RegisterFormProps = {
   venue: string | null;
   startDate: Date;
   endDate: Date | null;
+  registrationEndDate: Date | null;
   token: string;
 };
 
@@ -26,6 +27,7 @@ export function RegisterForm({
   venue,
   startDate,
   endDate,
+  registrationEndDate,
   token,
 }: RegisterFormProps) {
   const [name, setName] = useState("");
@@ -122,6 +124,20 @@ export function RegisterForm({
               )}
             </p>
           </div>
+          {registrationEndDate && (
+            <div>
+              <span className="text-sm text-muted-foreground">Registration closes on:</span>
+              <p className="font-medium">
+                {new Date(registrationEndDate).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Registration Form */}
@@ -171,10 +187,6 @@ export function RegisterForm({
               disabled={isPending}
             />
           </div>
-
-          <p className="text-sm text-muted-foreground">
-            * At least one contact method (email or phone) is required
-          </p>
 
           {/* Error Message */}
           {error && (

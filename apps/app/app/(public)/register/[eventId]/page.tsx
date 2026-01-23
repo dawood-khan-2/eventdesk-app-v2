@@ -54,6 +54,7 @@ export default async function RegisterPage({ params, searchParams }: PageProps) 
         venue={event.venue}
         startDate={event.startDate}
         endDate={event.endDate}
+        registrationEndDate={event.registrationEndDate}
         token={token}
       />
     </div>

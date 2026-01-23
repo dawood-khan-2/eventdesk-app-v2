@@ -2,7 +2,7 @@
 
 import { notFound, useParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
-import { getEvent, sendRegistrationLink } from "../actions";
+import { getEvent, sendRegistrationLink, updateEvent } from "../actions";
 import { getTasks, getItineraries, getGuests } from "./actions";
 import { getEstimates } from "../../estimates/actions";
 import { getInvoices } from "../../invoices/actions";
@@ -41,8 +41,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@repo/design-system/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/design-system/components/ui/dialog";
+import { Label } from "@repo/design-system/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@repo/design-system/components/ui/popover";
+import { Calendar } from "@repo/design-system/components/ui/calendar";
 import { toast } from "sonner";
-import { Plus, Search, Mail } from "lucide-react";
+import { Plus, Search, Mail, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@repo/design-system/lib/utils";
 
 export default function EventPage() {
   const params = useParams();
@@ -55,8 +72,13 @@ export default function EventPage() {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
   const [isItinerarySheetOpen, setIsItinerarySheetOpen] = useState(false);
+  const [isRegistrationSettingsOpen, setIsRegistrationSettingsOpen] = useState(false);
   const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
   const [isSendingRegistration, setIsSendingRegistration] = useState(false);
+  const [isUpdatingRegistrationSettings, setIsUpdatingRegistrationSettings] = useState(false);
+  const [regMaxGuests, setRegMaxGuests] = useState<string>("");
+  const [regEndDate, setRegEndDate] = useState<Date | undefined>();
+  const [regEndTime, setRegEndTime] = useState("");
   const [tasksRefreshKey, setTasksRefreshKey] = useState(0);
   
   // Task edit dialog state
@@ -271,6 +293,64 @@ export default function EventPage() {
     setItinerariesRefreshKey(prev => prev + 1);
   };
 
+  // Handle opening registration settings dialog
+  const handleOpenRegistrationSettings = () => {
+    // Pre-populate with current event values
+    setRegMaxGuests(event?.maxGuests ? event.maxGuests.toString() : "");
+    if (event?.registrationEndDate) {
+      const endDate = new Date(event.registrationEndDate);
+      setRegEndDate(endDate);
+      setRegEndTime(format(endDate, "HH:mm"));
+    } else {
+      setRegEndDate(undefined);
+      setRegEndTime("");
+    }
+    setIsRegistrationSettingsOpen(true);
+  };
+
+  // Handle skip - go straight to confirmation
+  const handleSkipSettings = () => {
+    setIsRegistrationSettingsOpen(false);
+    setIsRegistrationDialogOpen(true);
+  };
+
+  // Handle update registration settings
+  const handleUpdateRegistrationSettings = async () => {
+    setIsUpdatingRegistrationSettings(true);
+    
+    // Prepare update data
+    let registrationEndDateTime: Date | undefined;
+    if (regEndDate && regEndTime) {
+      registrationEndDateTime = new Date(regEndDate);
+      const [hour, minute] = regEndTime.split(":");
+      registrationEndDateTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
+    }
+    
+    // Build update payload - only include fields with values
+    // Use event.id instead of id from params to ensure we have the correct value
+    const updateData: any = { id: event?.id || id };
+    if (regMaxGuests) {
+      updateData.maxGuests = parseInt(regMaxGuests);
+    }
+    if (registrationEndDateTime) {
+      updateData.registrationEndDate = registrationEndDateTime.toISOString();
+    }
+    
+    console.log('Update data:', updateData);
+    const result = await updateEvent(updateData);
+
+    setIsUpdatingRegistrationSettings(false);
+
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      // Update local event state
+      setEvent(result.data);
+      setIsRegistrationSettingsOpen(false);
+      setIsRegistrationDialogOpen(true);
+    }
+  };
+
   // Handle send registration link
   const handleSendRegistrationLink = async () => {
     setIsSendingRegistration(true);
@@ -458,7 +538,7 @@ export default function EventPage() {
                 />
               </div>
               <Button 
-                onClick={() => setIsRegistrationDialogOpen(true)} 
+                onClick={handleOpenRegistrationSettings} 
                 className="w-full sm:w-auto"
                 variant="outline"
               >
@@ -604,14 +684,94 @@ export default function EventPage() {
         currentEventId={id}
       />
 
+      {/* Registration Settings Dialog */}
+      <Dialog open={isRegistrationSettingsOpen} onOpenChange={setIsRegistrationSettingsOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Update Registration Settings</DialogTitle>
+            <DialogDescription>
+              Update the guest registration settings before sending the link.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Max Guests */}
+            <div className="space-y-2">
+              <Label htmlFor="reg-max-guests">Max Guests</Label>
+              <Input
+                id="reg-max-guests"
+                type="number"
+                min="1"
+                placeholder="Unlimited"
+                value={regMaxGuests}
+                onChange={(e) => setRegMaxGuests(e.target.value)}
+              />
+            </div>
+
+            {/* Registration Deadline */}
+            <div className="space-y-2">
+              <Label>Registration Deadline</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !regEndDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {regEndDate ? format(regEndDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={regEndDate}
+                    onSelect={setRegEndDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Time picker - only show if date is selected */}
+            {regEndDate && (
+              <div className="space-y-2">
+                <Label htmlFor="reg-end-time">Registration Deadline Time</Label>
+                <Input
+                  id="reg-end-time"
+                  type="time"
+                  value={regEndTime}
+                  onChange={(e) => setRegEndTime(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={handleSkipSettings}
+              disabled={isUpdatingRegistrationSettings}
+            >
+              Skip
+            </Button>
+            <Button 
+              onClick={handleUpdateRegistrationSettings}
+              disabled={isUpdatingRegistrationSettings}
+            >
+              {isUpdatingRegistrationSettings ? "Updating..." : "Update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Registration Link Confirmation Dialog */}
       <AlertDialog open={isRegistrationDialogOpen} onOpenChange={setIsRegistrationDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Send Registration Link</AlertDialogTitle>
             <AlertDialogDescription>
-              This will send the event registration link to the client's email address. 
-              The client can then share this link with potential guests to allow them to register for the event.
+              Are you sure you want to send the registration link for "{event.name}" to {event.client?.name} ({event.client?.email})?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -620,7 +780,7 @@ export default function EventPage() {
               onClick={handleSendRegistrationLink}
               disabled={isSendingRegistration}
             >
-              {isSendingRegistration ? "Sending..." : "Send Link"}
+              {isSendingRegistration ? "Sending..." : "Send"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
