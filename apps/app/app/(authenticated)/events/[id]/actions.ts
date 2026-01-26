@@ -5,6 +5,10 @@ import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getInternalOrgId, getTenantContext } from "../../lib/auth-helpers";
+import { resend } from "@repo/email";
+import { GuestsListTemplate } from "@repo/email/templates/guests-list";
+import { render } from "@react-email/render";
+import { env } from "@/env";
 
 /**
  * Validation Schema for Task Creation
@@ -742,5 +746,140 @@ export async function getGuests(eventId: string) {
     }
     
     return { error: "Failed to fetch guests" };
+  }
+}
+
+/**
+ * Helper function to generate CSV from guests data
+ */
+function generateGuestsCSV(guests: Array<{ name: string; email: string; phone: string | null }>): string {
+  // Add UTF-8 BOM for Excel compatibility
+  const BOM = "\uFEFF";
+  
+  // CSV header
+  const header = "Serial Number,Name,Email,Phone\n";
+  
+  // CSV rows
+  const rows = guests.map((guest, index) => {
+    const serialNumber = index + 1;
+    const name = `"${guest.name.replace(/"/g, '""')}"`;
+    const email = guest.email ? `"${guest.email.replace(/"/g, '""')}"` : '""';
+    const phone = guest.phone ? `"${guest.phone.replace(/"/g, '""')}"` : '""';
+    
+    return `${serialNumber},${name},${email},${phone}`;
+  }).join("\n");
+  
+  return BOM + header + rows;
+}
+
+/**
+ * Send guests list via email with CSV attachment
+ */
+export async function sendGuestsList(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Fetch event, client, and guests
+    const result = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          id: true,
+          name: true,
+          venue: true,
+          startDate: true,
+          endDate: true,
+          client: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      if (!event.client.email) {
+        throw new Error("Client email not found");
+      }
+
+      const guests = await prisma.guest.findMany({
+        where: { eventId },
+        select: {
+          name: true,
+          email: true,
+          phone: true,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      return { event, guests };
+    });
+
+    const { event, guests } = result;
+
+    // Check if there are any guests
+    if (guests.length === 0) {
+      return { error: "No guests have registered yet. Cannot send empty guest list." };
+    }
+
+    // Generate CSV
+    const csvContent = generateGuestsCSV(guests);
+    const csvBuffer = Buffer.from(csvContent, "utf-8");
+
+    // Format date for display
+    const eventDate = new Date(event.startDate).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    // Format filename-safe event name and date
+    const safeEventName = event.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const fileDate = new Date().toISOString().split('T')[0];
+    const filename = `${safeEventName}-guests-${fileDate}.csv`;
+
+    // Render email template
+    const emailHtml = await render(
+      GuestsListTemplate({
+        clientName: event.client.name,
+        eventName: event.name,
+        eventDate,
+        eventVenue: event.venue || undefined,
+        guestCount: guests.length,
+      })
+    );
+
+    // Send email with CSV attachment
+    const { error: emailError } = await resend.emails.send({
+      from: env.RESEND_FROM,
+      to: event.client.email as string, // Already validated above
+      subject: `Guests List for ${event.name}`,
+      html: emailHtml,
+      attachments: [
+        {
+          filename,
+          content: csvBuffer,
+        },
+      ],
+    });
+
+    if (emailError) {
+      console.error("Failed to send guests list email:", emailError);
+      return { error: "Failed to send guests list email" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send guests list:", error);
+    
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to send guests list" };
   }
 }

@@ -3,7 +3,7 @@
 import { notFound, useParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
 import { getEvent, sendRegistrationLink, updateEvent } from "../actions";
-import { getTasks, getItineraries, getGuests } from "./actions";
+import { getTasks, getItineraries, getGuests, sendGuestsList } from "./actions";
 import { getEstimates } from "../../estimates/actions";
 import { getInvoices } from "../../invoices/actions";
 import { getBills } from "../../bills/actions";
@@ -57,7 +57,7 @@ import {
 } from "@repo/design-system/components/ui/popover";
 import { Calendar } from "@repo/design-system/components/ui/calendar";
 import { toast } from "sonner";
-import { Plus, Search, Mail, CalendarIcon } from "lucide-react";
+import { Plus, Search, Mail, CalendarIcon, Link, TableProperties } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@repo/design-system/lib/utils";
 
@@ -76,6 +76,8 @@ export default function EventPage() {
   const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
   const [isSendingRegistration, setIsSendingRegistration] = useState(false);
   const [isUpdatingRegistrationSettings, setIsUpdatingRegistrationSettings] = useState(false);
+  const [isGuestsListDialogOpen, setIsGuestsListDialogOpen] = useState(false);
+  const [isSendingGuestsList, setIsSendingGuestsList] = useState(false);
   const [regMaxGuests, setRegMaxGuests] = useState<string>("");
   const [regEndDate, setRegEndDate] = useState<Date | undefined>();
   const [regEndTime, setRegEndTime] = useState("");
@@ -365,6 +367,20 @@ export default function EventPage() {
     }
   };
 
+  // Handle send guests list
+  const handleSendGuestsList = async () => {
+    setIsSendingGuestsList(true);
+    const result = await sendGuestsList(id);
+    setIsSendingGuestsList(false);
+    setIsGuestsListDialogOpen(false);
+
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Guests list has been sent to the client's email.");
+    }
+  };
+
   // Filter tasks by search query
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -542,8 +558,16 @@ export default function EventPage() {
                 className="w-full sm:w-auto"
                 variant="outline"
               >
-                <Mail className="h-4 w-4 mr-2" />
+                <Link className="h-4 w-4 mr-2" />
                 Send Registration Link
+              </Button>
+              <Button 
+                onClick={() => setIsGuestsListDialogOpen(true)} 
+                className="w-full sm:w-auto"
+                variant="outline"
+              >
+                <TableProperties className="h-4 w-4 mr-2" />
+                Send Guests List
               </Button>
             </div>
             
@@ -781,6 +805,27 @@ export default function EventPage() {
               disabled={isSendingRegistration}
             >
               {isSendingRegistration ? "Sending..." : "Send"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Guests List Confirmation Dialog */}
+      <AlertDialog open={isGuestsListDialogOpen} onOpenChange={setIsGuestsListDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Guests List</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to send the guests list (CSV file) for "{event.name}" to {event.client?.name} ({event.client?.email})?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSendingGuestsList}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleSendGuestsList}
+              disabled={isSendingGuestsList}
+            >
+              {isSendingGuestsList ? "Sending..." : "Send"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
