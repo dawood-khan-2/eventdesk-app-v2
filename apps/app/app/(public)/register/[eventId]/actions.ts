@@ -100,10 +100,31 @@ export async function registerGuest(
     name: string;
     email?: string;
     phone?: string;
+    captchaToken: string;
   }
 ) {
   try {
-    // Validate token first
+    // Verify hCaptcha token first
+    const captchaVerifyUrl = "https://api.hcaptcha.com/siteverify";
+    const captchaResponse = await fetch(captchaVerifyUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        secret: env.HCAPTCHA_SECRET_KEY,
+        response: data.captchaToken,
+      }),
+    });
+
+    const captchaResult = await captchaResponse.json() as { success: boolean; "error-codes"?: string[] };
+    
+    if (!captchaResult.success) {
+      console.error("hCaptcha verification failed:", captchaResult["error-codes"]);
+      return { error: "Captcha verification failed. Please try again." };
+    }
+
+    // Validate token
     const validationResult = await validateRegistrationToken(token, eventId);
     
     if (validationResult.error || !validationResult.data) {

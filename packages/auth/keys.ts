@@ -7,6 +7,7 @@ export const keys = () =>
       CLERK_SECRET_KEY: z.string().startsWith("sk_").optional(),
       CLERK_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
       JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
+      HCAPTCHA_SECRET_KEY: z.string().min(1),
     },
     client: {
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z
@@ -17,11 +18,13 @@ export const keys = () =>
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: z.string().startsWith("/"),
       NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: z.string().startsWith("/"),
       NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: z.string().startsWith("/"),
+      NEXT_PUBLIC_HCAPTCHA_SITE_KEY: z.string().min(1),
     },
     runtimeEnv: {
       CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
       CLERK_WEBHOOK_SECRET: process.env.CLERK_WEBHOOK_SECRET,
       JWT_SECRET: process.env.JWT_SECRET,
+      HCAPTCHA_SECRET_KEY: process.env.HCAPTCHA_SECRET_KEY,
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
         process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
       NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
@@ -30,5 +33,6 @@ export const keys = () =>
         process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL,
       NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL:
         process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL,
+      NEXT_PUBLIC_HCAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY,
     },
   });

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/design-system/components/ui/card";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Label } from "@repo/design-system/components/ui/label";
 import { Alert, AlertDescription } from "@repo/design-system/components/ui/alert";
 import { CheckCircle2 } from "lucide-react";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { registerGuest } from "./actions";
+import { env } from "@/env";
 
 type RegisterFormProps = {
   eventId: string;
@@ -33,9 +35,11 @@ export function RegisterForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const captchaRef = useRef<HCaptcha>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,15 +51,25 @@ export function RegisterForm({
       return;
     }
 
+    // Validate captcha
+    if (!captchaToken) {
+      setError("Please complete the captcha verification");
+      return;
+    }
+
     startTransition(async () => {
       const result = await registerGuest(token, eventId, {
         name,
         email: email || undefined,
         phone: phone || undefined,
+        captchaToken,
       });
 
       if (result.error) {
         setError(result.error);
+        // Reset captcha on error
+        setCaptchaToken(null);
+        captchaRef.current?.resetCaptcha();
       } else {
         setSubmitted(true);
         setError(null);
@@ -188,6 +202,19 @@ export function RegisterForm({
             />
           </div>
 
+          {/* hCaptcha */}
+          <div className="flex justify-center">
+            <HCaptcha
+              ref={captchaRef}
+              sitekey={env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY}
+              onVerify={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
+              theme="light"
+              size="normal"
+            />
+          </div>
+
           {/* Error Message */}
           {error && (
             <Alert variant="destructive">
@@ -198,7 +225,7 @@ export function RegisterForm({
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={isPending || !name}
+            disabled={isPending || !name || !captchaToken}
             className="w-full"
             size="lg"
           >
