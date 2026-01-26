@@ -60,6 +60,9 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
   const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [endTime, setEndTime] = useState("");
+  const [maxGuests, setMaxGuests] = useState<string>("");
+  const [registrationEndDate, setRegistrationEndDate] = useState<Date | undefined>();
+  const [registrationEndTime, setRegistrationEndTime] = useState("");
   
   // Dropdowns state
   const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
@@ -140,6 +143,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         setEstimateId("");
         setVenue(event.venue || "");
         setDescription(event.description || "");
+        setMaxGuests(event.maxGuests ? event.maxGuests.toString() : "");
         
         if (event.startDate) {
           const start = new Date(event.startDate);
@@ -150,6 +154,14 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
           const end = new Date(event.endDate);
           setEndDate(end);
           setEndTime(format(end, "HH:mm"));
+        }
+        if (event.registrationEndDate) {
+          const regEnd = new Date(event.registrationEndDate);
+          setRegistrationEndDate(regEnd);
+          setRegistrationEndTime(format(regEnd, "HH:mm"));
+        } else {
+          setRegistrationEndDate(undefined);
+          setRegistrationEndTime("");
         }
       } else {
         setName("");
@@ -162,6 +174,9 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         setStartTime("");
         setEndDate(undefined);
         setEndTime("");
+        setMaxGuests("");
+        setRegistrationEndDate(undefined);
+        setRegistrationEndTime("");
       }
       setMode(initialMode);
     }
@@ -224,6 +239,14 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
     }
 
     startTransition(async () => {
+      // Prepare registration end date/time if provided
+      let registrationEndDateTime: Date | undefined;
+      if (registrationEndDate && registrationEndTime) {
+        registrationEndDateTime = new Date(registrationEndDate);
+        const [regHour, regMinute] = registrationEndTime.split(":");
+        registrationEndDateTime.setHours(parseInt(regHour), parseInt(regMinute), 0, 0);
+      }
+
       const data = {
         name: name.trim(),
         leadOrClientId,
@@ -233,6 +256,8 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         description: description.trim() || undefined,
         startDate: startDateTime.toISOString(),
         endDate: endDateTime.toISOString(),
+        maxGuests: maxGuests ? parseInt(maxGuests) : undefined,
+        registrationEndDate: registrationEndDateTime?.toISOString(),
       };
 
       const result = event
@@ -478,6 +503,61 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                 disabled={isViewing}
               />
             </div>
+
+            {/* Guest Management */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="maxGuests">Max Guests</Label>
+                <Input
+                  id="maxGuests"
+                  type="number"
+                  min="1"
+                  placeholder="Unlimited"
+                  value={maxGuests}
+                  onChange={(e) => setMaxGuests(e.target.value)}
+                  disabled={isViewing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Registration Deadline</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !registrationEndDate && "text-muted-foreground"
+                      )}
+                      disabled={isViewing}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {registrationEndDate ? format(registrationEndDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={registrationEndDate}
+                      onSelect={setRegistrationEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {registrationEndDate && (
+              <div className="space-y-2">
+                <Label htmlFor="registrationEndTime">Registration Deadline Time</Label>
+                <Input
+                  id="registrationEndTime"
+                  type="time"
+                  value={registrationEndTime}
+                  onChange={(e) => setRegistrationEndTime(e.target.value)}
+                  disabled={isViewing}
+                />
+              </div>
+            )}
 
             {/* Start Date & Time */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

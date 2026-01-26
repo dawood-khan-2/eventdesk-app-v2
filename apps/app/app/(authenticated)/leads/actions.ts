@@ -1,11 +1,10 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import type { Lead, LeadStatus } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId } from "../lib/auth-helpers";
+import { getTenantContext } from "../lib/auth-helpers";
 
 /**
  * Validation Schemas
@@ -37,17 +36,11 @@ const searchLeadsSchema = z.object({
  */
 export async function createLead(data: z.infer<typeof createLeadSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = createLeadSchema.parse(data);
 
     // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Create lead with tenant context
     const lead = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -82,13 +75,7 @@ export async function getLeads(options?: {
   offset?: number;
 }) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const leads = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.lead.findMany({
@@ -120,13 +107,7 @@ export async function getLead(id: string) {
       return { error: "Lead ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const lead = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.lead.findUnique({
@@ -150,17 +131,11 @@ export async function getLead(id: string) {
  */
 export async function updateLead(data: z.infer<typeof updateLeadSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = updateLeadSchema.parse(data);
     const { id, ...updateData } = validatedData;
 
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Update lead with tenant context (RLS ensures we can only update our own leads)
     const lead = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -193,13 +168,7 @@ export async function deleteLead(id: string) {
       return { error: "Lead ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Delete lead with tenant context (RLS ensures we can only delete our own leads)
     await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -221,14 +190,8 @@ export async function deleteLead(id: string) {
  */
 export async function searchLeads(options: z.infer<typeof searchLeadsSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     const validatedOptions = searchLeadsSchema.parse(options);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const leads = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.lead.findMany({
@@ -273,13 +236,7 @@ export async function updateLeadStatus(id: string, status: LeadStatus) {
       return { error: "Lead ID and status are required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const lead = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.lead.update({
@@ -302,13 +259,7 @@ export async function updateLeadStatus(id: string, status: LeadStatus) {
  */
 export async function getLeadsStats() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const stats = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       const [total, newCount, contacted, proposalSent, followUp, converted, lost] = await Promise.all([

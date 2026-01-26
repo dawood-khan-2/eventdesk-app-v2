@@ -28,6 +28,11 @@ export default authMiddleware(async (auth, request) => {
     return securityHeaders();
   }
 
+  // Skip strict security headers for public registration routes (allows hCaptcha iframe)
+  if (pathname.startsWith("/register/")) {
+    return NextResponse.next();
+  }
+
   const session = await auth(); // call the function to get auth data
 
   // If signed in but no active org, force onboarding

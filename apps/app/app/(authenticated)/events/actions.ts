@@ -1,14 +1,14 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { SignJWT } from "jose";
 import { resend } from "@repo/email";
 import { FeedbackRequestTemplate } from "@repo/email/templates/feedback-request";
+import { RegistrationLinkTemplate } from "@repo/email/templates/registration-link";
 import { env } from "@/env";
-import { getInternalOrgId, getTenantContext } from "../lib/auth-helpers";
+import { getTenantContext } from "../lib/auth-helpers";
 
 /**
  * Event filter types
@@ -27,6 +27,8 @@ const createEventSchema = z.object({
   description: z.string().optional().or(z.literal("")),
   startDate: z.string().datetime("Invalid start date"),
   endDate: z.string().datetime("Invalid end date"),
+  maxGuests: z.number().int().positive().optional(),
+  registrationEndDate: z.string().datetime("Invalid registration end date").optional(),
 }).refine(
   (data) => {
     const start = new Date(data.startDate);
@@ -50,12 +52,14 @@ const createEventSchema = z.object({
 );
 
 const updateEventSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string().min(1),
   name: z.string().min(1, "Event name is required").max(255).optional(),
   venue: z.string().max(500).optional().or(z.literal("")),
   description: z.string().optional().or(z.literal("")),
   startDate: z.string().datetime("Invalid start date").optional(),
   endDate: z.string().datetime("Invalid end date").optional(),
+  maxGuests: z.number().int().positive().optional(),
+  registrationEndDate: z.string().datetime("Invalid registration end date").optional(),
 }).refine(
   (data) => {
     // Only validate dates if both are provided
@@ -113,17 +117,10 @@ function getEventFilterCondition(filter: EventFilter) {
  */
 export async function createEvent(data: z.infer<typeof createEventSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = createEventSchema.parse(data);
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Execute entire flow in a single transaction with automatic rollback on failure
     // The prisma object here is already a TransactionClient
@@ -262,13 +259,7 @@ export async function getEvents(options?: {
   offset?: number;
 }) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const events = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.event.findMany({
@@ -308,13 +299,7 @@ export async function getEvent(id: string) {
       return { error: "Event ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const event = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.event.findUnique({
@@ -323,6 +308,7 @@ export async function getEvent(id: string) {
           client: {
             select: {
               name: true,
+              email: true,
             },
           },
         },
@@ -345,17 +331,11 @@ export async function getEvent(id: string) {
  */
 export async function updateEvent(data: z.infer<typeof updateEventSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = updateEventSchema.parse(data);
     const { id, ...updateData } = validatedData;
 
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Prepare update data with proper date conversion
     const dataToUpdate: any = {};
@@ -365,6 +345,8 @@ export async function updateEvent(data: z.infer<typeof updateEventSchema>) {
     if (updateData.description !== undefined) dataToUpdate.description = updateData.description || null;
     if (updateData.startDate !== undefined) dataToUpdate.startDate = new Date(updateData.startDate);
     if (updateData.endDate !== undefined) dataToUpdate.endDate = new Date(updateData.endDate);
+    if (updateData.maxGuests !== undefined) dataToUpdate.maxGuests = updateData.maxGuests || null;
+    if (updateData.registrationEndDate !== undefined) dataToUpdate.registrationEndDate = updateData.registrationEndDate ? new Date(updateData.registrationEndDate) : null;
 
     // Update event with tenant context (RLS ensures we can only update our own events)
     const event = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -375,6 +357,7 @@ export async function updateEvent(data: z.infer<typeof updateEventSchema>) {
           client: {
             select: {
               name: true,
+              email: true,
             },
           },
         },
@@ -404,13 +387,7 @@ export async function deleteEvent(id: string) {
       return { error: "Event ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Delete event with tenant context (RLS ensures we can only delete our own events)
     await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -432,14 +409,9 @@ export async function deleteEvent(id: string) {
  */
 export async function searchEvents(options: z.infer<typeof searchEventsSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     const validatedOptions = searchEventsSchema.parse(options);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     const events = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.event.findMany({
@@ -488,13 +460,7 @@ export async function searchEvents(options: z.infer<typeof searchEventsSchema>) 
  */
 export async function getEventsStats() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
     const now = new Date();
 
     const stats = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -534,13 +500,7 @@ export async function getEventsStats() {
  */
 export async function getEstimatesForLeadOrClient(id: string, type: "lead" | "client") {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const estimates = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.estimate.findMany({
@@ -586,6 +546,72 @@ export async function generateFeedbackToken(eventId: string) {
     return { data: token };
   } catch (error) {
     console.error("Failed to generate feedback token:", error);
+    return { error: "Failed to generate token" };
+  }
+}
+
+/**
+ * Generate JWT token for guest registration
+ */
+export async function generateRegistrationToken(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Fetch event to get registration deadline
+    const event = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
+      prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          registrationEndDate: true,
+          endDate: true,
+        },
+      })
+    );
+
+    if (!event) {
+      return { error: "Event not found" };
+    }
+
+    // Determine token expiration with buffer for better error messages
+    // We add a 30-day buffer so the token remains valid even after the deadline,
+    // allowing our application logic to provide meaningful error messages
+    // instead of generic "Invalid token" errors
+    let expirationTime: string | Date;
+    const now = new Date();
+
+    if (event.registrationEndDate) {
+      // If registration deadline exists, check if it has already passed
+      if (event.registrationEndDate <= now) {
+        return { error: "Registration deadline has already passed" };
+      }
+      // Add 30-day buffer beyond registration deadline (industry standard)
+      const bufferDate = new Date(event.registrationEndDate);
+      bufferDate.setDate(bufferDate.getDate() + 30);
+      expirationTime = bufferDate;
+    } else if (event.endDate) {
+      // Fall back to event end date + 30-day buffer
+      const bufferDate = new Date(event.endDate);
+      bufferDate.setDate(bufferDate.getDate() + 30);
+      expirationTime = bufferDate;
+    } else {
+      // Fall back to 30 days if neither is set
+      expirationTime = "30d";
+    }
+
+    // Create JWT token with eventId and tenantId
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+    const token = await new SignJWT({ 
+      eventId, 
+      tenantId: internalOrgId 
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime(expirationTime)
+      .sign(secret);
+
+    return { data: token };
+  } catch (error) {
+    console.error("Failed to generate registration token:", error);
     return { error: "Failed to generate token" };
   }
 }
@@ -683,5 +709,95 @@ export async function requestFeedback(eventId: string) {
   } catch (error) {
     console.error("Failed to request feedback:", error);
     return { error: "Failed to get estimates" };
+  }
+}
+
+/**
+ * Send registration link for an event
+ */
+export async function sendRegistrationLink(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Fetch event details
+    const event = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
+      prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          id: true,
+          name: true,
+          venue: true,
+          startDate: true,
+          endDate: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      })
+    );
+
+    if (!event) {
+      return { error: "Event not found" };
+    }
+
+    // Check if event has ended
+    if (event.endDate && event.endDate < new Date()) {
+      return { error: "Cannot send registration link for a past event" };
+    }
+
+    // Check if client has email
+    if (!event.client.email) {
+      return { error: "Client email not found" };
+    }
+
+    // Generate token
+    const tokenResult = await generateRegistrationToken(eventId);
+    if (tokenResult.error || !tokenResult.data) {
+      return { error: tokenResult.error || "Failed to generate token" };
+    }
+
+    // Send email
+    const registrationUrl = `${env.NEXT_PUBLIC_APP_URL}/register/${eventId}?token=${tokenResult.data}`;
+    
+    // Format event date
+    const eventDate = event.startDate.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }) + (event.endDate && event.endDate.getTime() !== event.startDate.getTime() 
+      ? ` - ${event.endDate.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}`
+      : "");
+    
+    const { error: emailError } = await resend.emails.send({
+      from: env.RESEND_FROM,
+      to: event.client.email,
+      subject: `Registration link for ${event.name}`,
+      react: RegistrationLinkTemplate({
+        eventName: event.name,
+        clientName: event.client.name,
+        eventVenue: event.venue || undefined,
+        eventDate,
+        registrationUrl,
+      }),
+    });
+
+    if (emailError) {
+      console.error("Failed to send registration email:", emailError);
+      return { error: "Failed to send registration email" };
+    }
+
+    revalidatePath(`/events/${eventId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send registration link:", error);
+    return { error: "Failed to send registration link" };
   }
 }

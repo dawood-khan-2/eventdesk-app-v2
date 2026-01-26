@@ -23,6 +23,7 @@
     "@repo/security": "*",
     "@repo/seo": "*",
     "@repo/webhooks": "*",
+    "@hcaptcha/react-hcaptcha": "^1.11.0",
     "@sentry/nextjs": "^10.22.0",
     "@t3-oss/env-nextjs": "^0.13.8",
     "fuse.js": "^7.1.0",

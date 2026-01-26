@@ -1,0 +1,179 @@
+"use server";
+
+import { jwtVerify } from "jose";
+import { env } from "@/env";
+import { multiTenantDb } from "@repo/database";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+type TokenPayload = {
+  eventId: string;
+  tenantId: string;
+  iat: number;
+  exp: number;
+};
+
+/**
+ * Validate JWT token and fetch event details
+ */
+export async function validateRegistrationToken(token: string, eventId: string) {
+  try {
+    // Verify JWT token
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret) as { payload: TokenPayload };
+
+    // Validate eventId matches token
+    if (payload.eventId !== eventId) {
+      return { error: "Invalid token for this event" };
+    }
+
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      return { error: "Token has expired" };
+    }
+
+    // Fetch event using tenantId from token
+    const event = await multiTenantDb.forTenant(payload.tenantId).run((prisma) =>
+      prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          id: true,
+          name: true,
+          venue: true,
+          startDate: true,
+          endDate: true,
+          registrationEndDate: true,
+          maxGuests: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      })
+    );
+
+    if (!event) {
+      return { error: "Event not found" };
+    }
+
+    // Check if registration deadline has passed
+    const now_date = new Date();
+    if (event.registrationEndDate && event.registrationEndDate < now_date) {
+      return { error: "Registration deadline has passed" };
+    }
+
+    return { 
+      data: {
+        event,
+        tenantId: payload.tenantId,
+      }
+    };
+  } catch (error) {
+    console.error("Token validation failed:", error);
+    return { error: "Invalid or expired token" };
+  }
+}
+
+// Guest registration schema
+const guestRegistrationSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
+}).refine(
+  (data) => data.email || data.phone,
+  {
+    message: "Either email or phone is required",
+    path: ["email"],
+  }
+);
+
+/**
+ * Register a guest for an event
+ */
+export async function registerGuest(
+  token: string,
+  eventId: string,
+  data: {
+    name: string;
+    email?: string;
+    phone?: string;
+    captchaToken: string;
+  }
+) {
+  try {
+    // Verify hCaptcha token first
+    const captchaVerifyUrl = "https://api.hcaptcha.com/siteverify";
+    const captchaResponse = await fetch(captchaVerifyUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        secret: env.HCAPTCHA_SECRET_KEY,
+        response: data.captchaToken,
+      }),
+    });
+
+    const captchaResult = await captchaResponse.json() as { success: boolean; "error-codes"?: string[] };
+    
+    if (!captchaResult.success) {
+      console.error("hCaptcha verification failed:", captchaResult["error-codes"]);
+      return { error: "Captcha verification failed. Please try again." };
+    }
+
+    // Validate token
+    const validationResult = await validateRegistrationToken(token, eventId);
+    
+    if (validationResult.error || !validationResult.data) {
+      return { error: validationResult.error || "Invalid token" };
+    }
+
+    const { tenantId } = validationResult.data;
+
+    // Validate input
+    const validatedData = guestRegistrationSchema.parse(data);
+
+    // Check capacity before registering (moved here to avoid blocking after successful registration)
+    if (validationResult.data.event.maxGuests) {
+      const guestCount = await multiTenantDb.forTenant(tenantId).run((prisma) =>
+        prisma.guest.count({ where: { eventId } })
+      );
+
+      if (guestCount >= validationResult.data.event.maxGuests) {
+        return { error: "This event has reached maximum capacity" };
+      }
+    }
+
+    // Create guest registration
+    const guest = await multiTenantDb.forTenant(tenantId).run((prisma) =>
+      prisma.guest.create({
+        data: {
+          tenantId,
+          eventId,
+          name: validatedData.name,
+          email: validatedData.email || "",
+          phone: validatedData.phone || null,
+        },
+      })
+    ) as { id: string };
+
+    revalidatePath(`/events/${eventId}`);
+
+    return { data: { success: true, guestId: guest.id } };
+  } catch (error) {
+    console.error("Failed to register guest:", error);
+    
+    if (error instanceof z.ZodError) {
+      return { error: error.issues[0]?.message ?? "Invalid input" };
+    }
+
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to register. Please try again." };
+  }
+}

@@ -1,10 +1,9 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId } from "../lib/auth-helpers";
+import { getTenantContext } from "../lib/auth-helpers";
 
 /**
  * Validation Schemas
@@ -35,18 +34,11 @@ const searchVendorsSchema = z.object({
  */
 export async function createVendor(data: z.infer<typeof createVendorSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = createVendorSchema.parse(data);
     const { serviceIds, ...vendorData } = validatedData;
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Create vendor with tenant context and services
     const vendor = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -101,13 +93,7 @@ export async function getVendors(options?: {
   serviceCategoryId?: string;
 }) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const vendors = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.vendor.findMany({
@@ -157,13 +143,7 @@ export async function getVendor(id: string) {
       return { error: "Vendor ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const vendor = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.vendor.findUnique({
@@ -199,17 +179,11 @@ export async function getVendor(id: string) {
  */
 export async function updateVendor(data: z.infer<typeof updateVendorSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = updateVendorSchema.parse(data);
     const { id, serviceIds, ...updateData } = validatedData;
 
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Update vendor with tenant context
     const vendor = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -273,13 +247,7 @@ export async function deleteVendor(id: string) {
       return { error: "Vendor ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Delete vendor with tenant context (cascade will delete vendor services)
     await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -301,14 +269,9 @@ export async function deleteVendor(id: string) {
  */
 export async function searchVendors(options: z.infer<typeof searchVendorsSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     const validatedOptions = searchVendorsSchema.parse(options);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     const vendors = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.vendor.findMany({

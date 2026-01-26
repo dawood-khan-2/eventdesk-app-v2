@@ -1,9 +1,9 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { database, multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getTenantContext } from "../lib/auth-helpers";
 
 const updateOrganizationSettingsSchema = z.object({
   address: z.string().optional(),
@@ -39,28 +39,9 @@ export type UpdateServiceCategoryInput = z.infer<
   typeof updateServiceCategorySchema
 >;
 
-async function getInternalOrgId(clerkOrgId: string) {
-  const org = await database.organization.findUnique({
-    where: { clerkId: clerkOrgId },
-    select: { id: true },
-  });
-
-  if (!org) {
-    throw new Error("Organization not found");
-  }
-
-  return org.id;
-}
-
 export async function getOrganizationSettings() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const organization = await database.organization.findUnique({
       where: { id: internalOrgId },
@@ -85,14 +66,9 @@ export async function updateOrganizationSettings(
   input: UpdateOrganizationSettingsInput
 ) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = updateOrganizationSettingsSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     await database.organization.update({
       where: { id: internalOrgId },
@@ -118,13 +94,7 @@ export async function updateOrganizationSettings(
 
 export async function getFinanceSettings() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const organization = await database.organization.findUnique({
       where: { id: internalOrgId },
@@ -148,14 +118,9 @@ export async function updateFinanceSettings(
   input: UpdateFinanceSettingsInput
 ) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = updateFinanceSettingsSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     await database.organization.update({
       where: { id: internalOrgId },
@@ -181,13 +146,7 @@ export async function updateFinanceSettings(
 // ServiceCategories actions
 export async function getServiceCategories() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const categories = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.serviceCategories.findMany({
@@ -204,14 +163,9 @@ export async function getServiceCategories() {
 
 export async function createServiceCategory(input: CreateServiceCategoryInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = createServiceCategorySchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     const category = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.serviceCategories.create({
@@ -238,14 +192,9 @@ export async function createServiceCategory(input: CreateServiceCategoryInput) {
 
 export async function updateServiceCategory(input: UpdateServiceCategoryInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = updateServiceCategorySchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     const category = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.serviceCategories.update({
@@ -270,13 +219,7 @@ export async function updateServiceCategory(input: UpdateServiceCategoryInput) {
 
 export async function deleteServiceCategory(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.serviceCategories.delete({
@@ -308,13 +251,7 @@ export type UpdatePaymentModeInput = z.infer<typeof updatePaymentModeSchema>;
 
 export async function getPaymentModes() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const paymentModes = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.paymentModes.findMany({
@@ -331,14 +268,9 @@ export async function getPaymentModes() {
 
 export async function createPaymentMode(input: CreatePaymentModeInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = createPaymentModeSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     const paymentMode = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.paymentModes.create({
@@ -365,14 +297,9 @@ export async function createPaymentMode(input: CreatePaymentModeInput) {
 
 export async function updatePaymentMode(input: UpdatePaymentModeInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = updatePaymentModeSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     const paymentMode = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.paymentModes.update({
@@ -397,13 +324,7 @@ export async function updatePaymentMode(input: UpdatePaymentModeInput) {
 
 export async function deletePaymentMode(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.paymentModes.delete({

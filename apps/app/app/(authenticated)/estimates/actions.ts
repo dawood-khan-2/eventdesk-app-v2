@@ -1,10 +1,9 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId } from "../lib/auth-helpers";
+import { getTenantContext } from "../lib/auth-helpers";
 import { SignJWT } from "jose";
 import { env } from "@/env";
 import { resend } from "@repo/email";
@@ -60,14 +59,8 @@ export type LineItem = z.infer<typeof lineItemSchema>;
 
 export async function createEstimate(input: CreateEstimateInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = createEstimateSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const estimate = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.estimate.create({
@@ -110,13 +103,7 @@ export async function createEstimate(input: CreateEstimateInput) {
 
 export async function getEstimates(page = 1, limit = 20, query = "", eventId?: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
     const offset = (page - 1) * limit;
 
     const estimates = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
@@ -151,13 +138,7 @@ export async function getEstimates(page = 1, limit = 20, query = "", eventId?: s
 
 export async function getEstimate(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const estimate = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.estimate.findUnique({
@@ -182,14 +163,8 @@ export async function getEstimate(id: string) {
 
 export async function updateEstimate(input: UpdateEstimateInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = updateEstimateSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const estimate = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.estimate.update({
@@ -229,13 +204,7 @@ export async function updateEstimate(input: UpdateEstimateInput) {
 
 export async function deleteEstimate(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.estimate.delete({
@@ -254,13 +223,7 @@ export async function deleteEstimate(id: string) {
 
 export async function searchEstimates(query: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const estimates = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.estimate.findMany({
@@ -290,13 +253,7 @@ export async function searchEstimates(query: string) {
 
 export async function getEstimatesStats() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const count = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.estimate.count()
@@ -317,13 +274,7 @@ export async function updateEstimateStatus(
   newStatus: "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED"
 ) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const estimate = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       const updated = await prisma.estimate.update({
@@ -361,13 +312,7 @@ export async function updateEstimateStatus(
 // Generate JWT token for estimate approval
 export async function generateEstimateToken(estimateId: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Create JWT token with estimateId and tenantId
     const secret = new TextEncoder().encode(env.JWT_SECRET);
@@ -390,12 +335,6 @@ export async function generateEstimateToken(estimateId: string) {
 // Send estimate email
 export async function sendEstimateEmail(estimateId: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     // Get estimate using existing function
     const estimateResult = await getEstimate(estimateId);
     if (estimateResult.error || !estimateResult.data) {

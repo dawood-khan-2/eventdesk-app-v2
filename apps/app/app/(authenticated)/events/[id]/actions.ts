@@ -1,10 +1,13 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId } from "../../lib/auth-helpers";
+import { getTenantContext } from "../../lib/auth-helpers";
+import { resend } from "@repo/email";
+import { GuestsListTemplate } from "@repo/email/templates/guests-list";
+import { render } from "@react-email/render";
+import { env } from "@/env";
 
 /**
  * Validation Schema for Task Creation
@@ -28,17 +31,10 @@ const createTaskSchema = z.object({
  */
 export async function createTask(data: z.infer<typeof createTaskSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = createTaskSchema.parse(data);
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Create task with checklists in a transaction
     const task = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -109,13 +105,7 @@ export async function getTasks(eventId: string) {
       return { error: "Event ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const tasks = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.task.findMany({
@@ -157,13 +147,7 @@ export async function getTask(taskId: string) {
       return { error: "Task ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const task = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.task.findUnique({
@@ -226,16 +210,10 @@ export async function updateTask(taskId: string, data: z.infer<typeof updateTask
       return { error: "Task ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = updateTaskSchema.parse(data);
 
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const task = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Verify task exists
@@ -310,13 +288,7 @@ export async function updateChecklistItem(
       return { error: "Checklist item ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const item = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Verify item exists
@@ -368,13 +340,7 @@ export async function deleteChecklistItem(itemId: string) {
       return { error: "Checklist item ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Verify item exists
@@ -425,13 +391,7 @@ export async function createChecklistItem(taskId: string, title: string) {
       return { error: "Checklist item title is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const item = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Verify task exists
@@ -489,17 +449,10 @@ export async function createItineraries(
   items: Array<{ title: string; date: string }>
 ) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = createItinerariesSchema.parse({ eventId, items });
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Create itinerary items
     const itineraries = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -548,14 +501,7 @@ export async function createItineraries(
  */
 export async function getItineraries(eventId: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Fetch itineraries
     const itineraries = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -608,17 +554,10 @@ const updateItinerarySchema = z.object({
  */
 export async function updateItinerary(data: { id: string; title?: string; date?: string }) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = updateItinerarySchema.parse(data);
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Update itinerary
     const itinerary = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -667,14 +606,7 @@ export async function updateItinerary(data: { id: string; title?: string; date?:
  */
 export async function deleteItinerary(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Delete itinerary
     await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -704,5 +636,178 @@ export async function deleteItinerary(id: string) {
     }
     
     return { error: "Failed to delete itinerary" };
+  }
+}
+
+/**
+ * Get all guests for a specific event
+ */
+export async function getGuests(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Fetch guests
+    const guests = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // Verify event exists and belongs to this organization
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { id: true },
+      });
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      // Get all guests for this event
+      return await prisma.guest.findMany({
+        where: { eventId },
+        orderBy: { createdAt: "desc" },
+      });
+    });
+
+    return { data: guests };
+  } catch (error) {
+    console.error("Failed to fetch guests:", error);
+    
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to fetch guests" };
+  }
+}
+
+/**
+ * Helper function to generate CSV from guests data
+ */
+function generateGuestsCSV(guests: Array<{ name: string; email: string; phone: string | null }>): string {
+  // Add UTF-8 BOM for Excel compatibility
+  const BOM = "\uFEFF";
+  
+  // CSV header
+  const header = "Serial Number,Name,Email,Phone\n";
+  
+  // CSV rows
+  const rows = guests.map((guest, index) => {
+    const serialNumber = index + 1;
+    const name = `"${guest.name.replace(/"/g, '""')}"`;
+    const email = guest.email ? `"${guest.email.replace(/"/g, '""')}"` : '""';
+    const phone = guest.phone ? `"${guest.phone.replace(/"/g, '""')}"` : '""';
+    
+    return `${serialNumber},${name},${email},${phone}`;
+  }).join("\n");
+  
+  return BOM + header + rows;
+}
+
+/**
+ * Send guests list via email with CSV attachment
+ */
+export async function sendGuestsList(eventId: string) {
+  try {
+    const { internalOrgId } = await getTenantContext();
+
+    // Fetch event, client, and guests
+    const result = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          id: true,
+          name: true,
+          venue: true,
+          startDate: true,
+          endDate: true,
+          client: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      if (!event.client.email) {
+        throw new Error("Client email not found");
+      }
+
+      const guests = await prisma.guest.findMany({
+        where: { eventId },
+        select: {
+          name: true,
+          email: true,
+          phone: true,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      return { event, guests };
+    });
+
+    const { event, guests } = result;
+
+    // Check if there are any guests
+    if (guests.length === 0) {
+      return { error: "No guests have registered yet. Cannot send empty guest list." };
+    }
+
+    // Generate CSV
+    const csvContent = generateGuestsCSV(guests);
+    const csvBuffer = Buffer.from(csvContent, "utf-8");
+
+    // Format date for display
+    const eventDate = new Date(event.startDate).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    // Format filename-safe event name and date
+    const safeEventName = event.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const fileDate = new Date().toISOString().split('T')[0];
+    const filename = `${safeEventName}-guests-${fileDate}.csv`;
+
+    // Render email template
+    const emailHtml = await render(
+      GuestsListTemplate({
+        clientName: event.client.name,
+        eventName: event.name,
+        eventDate,
+        eventVenue: event.venue || undefined,
+        guestCount: guests.length,
+      })
+    );
+
+    // Send email with CSV attachment
+    const { error: emailError } = await resend.emails.send({
+      from: env.RESEND_FROM,
+      to: event.client.email as string, // Already validated above
+      subject: `Guests List for ${event.name}`,
+      html: emailHtml,
+      attachments: [
+        {
+          filename,
+          content: csvBuffer,
+        },
+      ],
+    });
+
+    if (emailError) {
+      console.error("Failed to send guests list email:", emailError);
+      return { error: "Failed to send guests list email" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send guests list:", error);
+    
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    
+    return { error: "Failed to send guests list" };
   }
 }

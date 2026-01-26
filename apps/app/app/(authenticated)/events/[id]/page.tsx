@@ -2,8 +2,8 @@
 
 import { notFound, useParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
-import { getEvent } from "../actions";
-import { getTasks, getItineraries } from "./actions";
+import { getEvent, sendRegistrationLink, updateEvent } from "../actions";
+import { getTasks, getItineraries, getGuests, sendGuestsList } from "./actions";
 import { getEstimates } from "../../estimates/actions";
 import { getInvoices } from "../../invoices/actions";
 import { getBills } from "../../bills/actions";
@@ -17,6 +17,7 @@ import { TaskEditDialog } from "./components/task-edit-dialog";
 import { TasksTable } from "./components/tasks-table";
 import { ItinerarySheet } from "./components/itinerary-sheet";
 import { ItineraryTimeline } from "./components/itinerary-timeline";
+import { GuestsTable } from "./components/guests-table";
 import { EstimatesClient } from "../../estimates/components/estimates-client";
 import { InvoicesClient } from "../../invoices/components/invoices-client";
 import { BillsClient } from "../../bills/components/bills-client";
@@ -30,7 +31,35 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@repo/design-system/components/ui/accordion";
-import { Plus, Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/design-system/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/design-system/components/ui/dialog";
+import { Label } from "@repo/design-system/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@repo/design-system/components/ui/popover";
+import { Calendar } from "@repo/design-system/components/ui/calendar";
+import { toast } from "sonner";
+import { Plus, Search, Mail, CalendarIcon, Link, TableProperties } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@repo/design-system/lib/utils";
 
 export default function EventPage() {
   const params = useParams();
@@ -43,6 +72,15 @@ export default function EventPage() {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
   const [isItinerarySheetOpen, setIsItinerarySheetOpen] = useState(false);
+  const [isRegistrationSettingsOpen, setIsRegistrationSettingsOpen] = useState(false);
+  const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
+  const [isSendingRegistration, setIsSendingRegistration] = useState(false);
+  const [isUpdatingRegistrationSettings, setIsUpdatingRegistrationSettings] = useState(false);
+  const [isGuestsListDialogOpen, setIsGuestsListDialogOpen] = useState(false);
+  const [isSendingGuestsList, setIsSendingGuestsList] = useState(false);
+  const [regMaxGuests, setRegMaxGuests] = useState<string>("");
+  const [regEndDate, setRegEndDate] = useState<Date | undefined>();
+  const [regEndTime, setRegEndTime] = useState("");
   const [tasksRefreshKey, setTasksRefreshKey] = useState(0);
   
   // Task edit dialog state
@@ -64,6 +102,11 @@ export default function EventPage() {
   const [isLoadingItineraries, setIsLoadingItineraries] = useState(false);
   const [itinerariesRefreshKey, setItinerariesRefreshKey] = useState(0);
   const [itinerarySearchQuery, setItinerarySearchQuery] = useState("");
+
+  // Guests state
+  const [guests, setGuests] = useState<any[]>([]);
+  const [isLoadingGuests, setIsLoadingGuests] = useState(false);
+  const [guestsSearchQuery, setGuestsSearchQuery] = useState("");
 
   // Estimates state
   const [estimates, setEstimates] = useState<any[]>([]);
@@ -185,6 +228,21 @@ export default function EventPage() {
     loadItineraries();
   }, [id, itinerariesRefreshKey]);
 
+  // Load guests data
+  useEffect(() => {
+    const loadGuests = async () => {
+      setIsLoadingGuests(true);
+      const result = await getGuests(id);
+      
+      if (result.data) {
+        setGuests(result.data);
+      }
+      setIsLoadingGuests(false);
+    };
+
+    loadGuests();
+  }, [id]);
+
   const handleSheetSuccess = () => {
     setIsSheetOpen(false);
     // Reload event data
@@ -237,6 +295,92 @@ export default function EventPage() {
     setItinerariesRefreshKey(prev => prev + 1);
   };
 
+  // Handle opening registration settings dialog
+  const handleOpenRegistrationSettings = () => {
+    // Pre-populate with current event values
+    setRegMaxGuests(event?.maxGuests ? event.maxGuests.toString() : "");
+    if (event?.registrationEndDate) {
+      const endDate = new Date(event.registrationEndDate);
+      setRegEndDate(endDate);
+      setRegEndTime(format(endDate, "HH:mm"));
+    } else {
+      setRegEndDate(undefined);
+      setRegEndTime("");
+    }
+    setIsRegistrationSettingsOpen(true);
+  };
+
+  // Handle skip - go straight to confirmation
+  const handleSkipSettings = () => {
+    setIsRegistrationSettingsOpen(false);
+    setIsRegistrationDialogOpen(true);
+  };
+
+  // Handle update registration settings
+  const handleUpdateRegistrationSettings = async () => {
+    setIsUpdatingRegistrationSettings(true);
+    
+    // Prepare update data
+    let registrationEndDateTime: Date | undefined;
+    if (regEndDate && regEndTime) {
+      registrationEndDateTime = new Date(regEndDate);
+      const [hour, minute] = regEndTime.split(":");
+      registrationEndDateTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
+    }
+    
+    // Build update payload - only include fields with values
+    // Use event.id instead of id from params to ensure we have the correct value
+    const updateData: any = { id: event?.id || id };
+    if (regMaxGuests) {
+      updateData.maxGuests = parseInt(regMaxGuests);
+    }
+    if (registrationEndDateTime) {
+      updateData.registrationEndDate = registrationEndDateTime.toISOString();
+    }
+    
+    console.log('Update data:', updateData);
+    const result = await updateEvent(updateData);
+
+    setIsUpdatingRegistrationSettings(false);
+
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      // Update local event state
+      setEvent(result.data);
+      setIsRegistrationSettingsOpen(false);
+      setIsRegistrationDialogOpen(true);
+    }
+  };
+
+  // Handle send registration link
+  const handleSendRegistrationLink = async () => {
+    setIsSendingRegistration(true);
+    const result = await sendRegistrationLink(id);
+    setIsSendingRegistration(false);
+    setIsRegistrationDialogOpen(false);
+
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Registration link has been sent to the client's email.");
+    }
+  };
+
+  // Handle send guests list
+  const handleSendGuestsList = async () => {
+    setIsSendingGuestsList(true);
+    const result = await sendGuestsList(id);
+    setIsSendingGuestsList(false);
+    setIsGuestsListDialogOpen(false);
+
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Guests list has been sent to the client's email.");
+    }
+  };
+
   // Filter tasks by search query
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -279,6 +423,7 @@ export default function EventPage() {
             <TabsList className="inline-flex md:flex md:w-full h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
               <TabsTrigger value="tasks" className="whitespace-nowrap px-3 md:flex-1">Tasks</TabsTrigger>
               <TabsTrigger value="itinerary" className="whitespace-nowrap px-3 md:flex-1">Itinerary</TabsTrigger>
+              <TabsTrigger value="guests" className="whitespace-nowrap px-3 md:flex-1">Guests</TabsTrigger>
               <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
               <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
               <TabsTrigger value="bills" className="whitespace-nowrap px-3 md:flex-1">Bills</TabsTrigger>
@@ -392,6 +537,51 @@ export default function EventPage() {
                 eventStartDate={event?.startDate || new Date()}
                 eventEndDate={event?.endDate || new Date()}
                 onRefresh={() => setItinerariesRefreshKey(prev => prev + 1)}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="guests" className="space-y-4 mt-6">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 mb-4">
+              <div className="relative flex-1 sm:flex-initial sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search guests..."
+                  value={guestsSearchQuery}
+                  onChange={(e) => setGuestsSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button 
+                onClick={handleOpenRegistrationSettings} 
+                className="w-full sm:w-auto"
+                variant="outline"
+              >
+                <Link className="h-4 w-4 mr-2" />
+                Send Registration Link
+              </Button>
+              <Button 
+                onClick={() => setIsGuestsListDialogOpen(true)} 
+                className="w-full sm:w-auto"
+                variant="outline"
+              >
+                <TableProperties className="h-4 w-4 mr-2" />
+                Send Guests List
+              </Button>
+            </div>
+            
+            {isLoadingGuests ? (
+              <div className="rounded-lg border p-8">
+                <p className="text-sm text-muted-foreground">Loading guests...</p>
+              </div>
+            ) : (
+              <GuestsTable
+                guests={guests.filter(guest => 
+                  guest.name.toLowerCase().includes(guestsSearchQuery.toLowerCase()) ||
+                  guest.email.toLowerCase().includes(guestsSearchQuery.toLowerCase()) ||
+                  (guest.phone && guest.phone.toLowerCase().includes(guestsSearchQuery.toLowerCase()))
+                )}
               />
             )}
           </TabsContent>
@@ -517,6 +707,129 @@ export default function EventPage() {
         onOpenChange={setIsSwitcherOpen}
         currentEventId={id}
       />
+
+      {/* Registration Settings Dialog */}
+      <Dialog open={isRegistrationSettingsOpen} onOpenChange={setIsRegistrationSettingsOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Update Registration Settings</DialogTitle>
+            <DialogDescription>
+              Update the guest registration settings before sending the link.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Max Guests */}
+            <div className="space-y-2">
+              <Label htmlFor="reg-max-guests">Max Guests</Label>
+              <Input
+                id="reg-max-guests"
+                type="number"
+                min="1"
+                placeholder="Unlimited"
+                value={regMaxGuests}
+                onChange={(e) => setRegMaxGuests(e.target.value)}
+              />
+            </div>
+
+            {/* Registration Deadline */}
+            <div className="space-y-2">
+              <Label>Registration Deadline</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !regEndDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {regEndDate ? format(regEndDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={regEndDate}
+                    onSelect={setRegEndDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Time picker - only show if date is selected */}
+            {regEndDate && (
+              <div className="space-y-2">
+                <Label htmlFor="reg-end-time">Registration Deadline Time</Label>
+                <Input
+                  id="reg-end-time"
+                  type="time"
+                  value={regEndTime}
+                  onChange={(e) => setRegEndTime(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={handleSkipSettings}
+              disabled={isUpdatingRegistrationSettings}
+            >
+              Skip
+            </Button>
+            <Button 
+              onClick={handleUpdateRegistrationSettings}
+              disabled={isUpdatingRegistrationSettings}
+            >
+              {isUpdatingRegistrationSettings ? "Updating..." : "Update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registration Link Confirmation Dialog */}
+      <AlertDialog open={isRegistrationDialogOpen} onOpenChange={setIsRegistrationDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Registration Link</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to send the registration link for "{event.name}" to {event.client?.name} ({event.client?.email})?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSendingRegistration}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleSendRegistrationLink}
+              disabled={isSendingRegistration}
+            >
+              {isSendingRegistration ? "Sending..." : "Send"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Guests List Confirmation Dialog */}
+      <AlertDialog open={isGuestsListDialogOpen} onOpenChange={setIsGuestsListDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Guests List</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to send the guests list (CSV file) for "{event.name}" to {event.client?.name} ({event.client?.email})?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSendingGuestsList}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleSendGuestsList}
+              disabled={isSendingGuestsList}
+            >
+              {isSendingGuestsList ? "Sending..." : "Send"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

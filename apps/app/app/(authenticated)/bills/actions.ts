@@ -1,13 +1,10 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId } from "../lib/auth-helpers";
-import {
-  calculateBillWithPayments,
-} from "@/lib/bill-calculations";
+import { getTenantContext } from "../lib/auth-helpers";
+import { calculateBillWithPayments } from "@/lib/bill-calculations";
 import { put, del } from "@repo/storage";
 
 const createBillSchema = z.object({
@@ -47,14 +44,8 @@ export type RecordBillPaymentInput = z.infer<typeof recordPaymentSchema>;
 
 export async function createBill(input: CreateBillInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = createBillSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Check for duplicate bill number for the vendor
     const existingBill = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
@@ -121,13 +112,7 @@ export async function getBills(
   endDate?: string
 ) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
     const offset = (page - 1) * limit;
 
     const bills = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
@@ -184,13 +169,7 @@ export async function getBills(
 
 export async function getBill(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const bill = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.bill.findUnique({
@@ -239,14 +218,8 @@ export async function getBill(id: string) {
 
 export async function updateBill(input: UpdateBillInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = updateBillSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Check for duplicate bill number for the vendor (excluding current bill)
     const existingBill = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
@@ -325,13 +298,7 @@ export async function updateBill(input: UpdateBillInput) {
 
 export async function deleteBill(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Get bill to check for attachment
     const bill = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
@@ -369,13 +336,7 @@ export async function deleteBill(id: string) {
 
 export async function searchBills(query: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const bills = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.bill.findMany({
@@ -413,13 +374,7 @@ export async function searchBills(query: string) {
 
 export async function getBillsStats() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const stats = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Fetch all bills with payment records
@@ -466,14 +421,8 @@ export async function getBillsStats() {
  */
 export async function recordBillPayment(input: RecordBillPaymentInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = recordPaymentSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const result = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Create payment record
@@ -530,13 +479,7 @@ export async function recordBillPayment(input: RecordBillPaymentInput) {
  */
 export async function getBillPayments(billId: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const payments = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.paymentRecord.findMany({
@@ -560,13 +503,7 @@ export async function getBillPayments(billId: string) {
  */
 export async function deleteBillPayment(paymentId: string, billId: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.paymentRecord.delete({
@@ -590,11 +527,7 @@ export async function deleteBillPayment(paymentId: string, billId: string) {
  */
 export async function uploadBillAttachment(formData: FormData) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
+    const { internalOrgId } = await getTenantContext();
 
     const file = formData.get("file") as File;
 
@@ -617,7 +550,7 @@ export async function uploadBillAttachment(formData: FormData) {
     // Generate a unique filename
     const timestamp = Date.now();
     const fileExt = file.name.split(".").pop();
-    const fileName = `bills/${orgId}/${timestamp}.${fileExt}`;
+    const fileName = `bills/${internalOrgId}/${timestamp}.${fileExt}`;
 
     // Upload to Vercel Blob storage
     const blob = await put(fileName, file, {

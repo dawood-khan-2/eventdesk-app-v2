@@ -1,10 +1,9 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId } from "../lib/auth-helpers";
+import { getTenantContext } from "../lib/auth-helpers";
 import { SignJWT } from "jose";
 import { env } from "@/env";
 import { resend } from "@repo/email";
@@ -77,14 +76,8 @@ export type LineItem = z.infer<typeof lineItemSchema>;
 
 export async function createInvoice(input: CreateInvoiceInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = createInvoiceSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const invoice = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.invoice.create({
@@ -128,13 +121,7 @@ export async function createInvoice(input: CreateInvoiceInput) {
 
 export async function getInvoices(page = 1, limit = 20, query = "", eventId?: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
     const offset = (page - 1) * limit;
 
     const invoices = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
@@ -179,13 +166,7 @@ export async function getInvoices(page = 1, limit = 20, query = "", eventId?: st
 
 export async function getInvoice(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const invoice = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.invoice.findUnique({
@@ -216,14 +197,8 @@ export async function getInvoice(id: string) {
 
 export async function updateInvoice(input: UpdateInvoiceInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = updateInvoiceSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const invoice = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.invoice.update({
@@ -267,13 +242,7 @@ export async function updateInvoice(input: UpdateInvoiceInput) {
 
 export async function deleteInvoice(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.invoice.delete({
@@ -292,13 +261,7 @@ export async function deleteInvoice(id: string) {
 
 export async function searchInvoices(query: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const invoices = await multiTenantDb.forTenant(internalOrgId).run((prisma) =>
       prisma.invoice.findMany({
@@ -329,13 +292,7 @@ export async function searchInvoices(query: string) {
 
 export async function getInvoicesStats() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const stats = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Fetch all invoices with payment records
@@ -382,14 +339,8 @@ export async function getInvoicesStats() {
  */
 export async function recordPayment(input: RecordPaymentInput) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     const validated = recordPaymentSchema.parse(input);
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const result = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Create payment record
@@ -445,13 +396,7 @@ export async function recordPayment(input: RecordPaymentInput) {
  */
 export async function generateInvoiceToken(invoiceId: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Create JWT token with invoiceId and tenantId
     const secret = new TextEncoder().encode(env.JWT_SECRET);
@@ -476,12 +421,6 @@ export async function generateInvoiceToken(invoiceId: string) {
  */
 export async function sendInvoiceEmail(invoiceId: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Unauthorized" };
-    }
-
     // Get invoice using existing function
     const invoiceResult = await getInvoice(invoiceId);
     if (invoiceResult.error || !invoiceResult.data) {
