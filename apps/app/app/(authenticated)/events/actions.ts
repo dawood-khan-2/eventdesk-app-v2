@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -9,7 +8,7 @@ import { resend } from "@repo/email";
 import { FeedbackRequestTemplate } from "@repo/email/templates/feedback-request";
 import { RegistrationLinkTemplate } from "@repo/email/templates/registration-link";
 import { env } from "@/env";
-import { getInternalOrgId, getTenantContext } from "../lib/auth-helpers";
+import { getTenantContext } from "../lib/auth-helpers";
 
 /**
  * Event filter types
@@ -118,17 +117,10 @@ function getEventFilterCondition(filter: EventFilter) {
  */
 export async function createEvent(data: z.infer<typeof createEventSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = createEventSchema.parse(data);
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Execute entire flow in a single transaction with automatic rollback on failure
     // The prisma object here is already a TransactionClient
@@ -267,13 +259,7 @@ export async function getEvents(options?: {
   offset?: number;
 }) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const events = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.event.findMany({
@@ -313,13 +299,7 @@ export async function getEvent(id: string) {
       return { error: "Event ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const event = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.event.findUnique({
@@ -351,17 +331,11 @@ export async function getEvent(id: string) {
  */
 export async function updateEvent(data: z.infer<typeof updateEventSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = updateEventSchema.parse(data);
     const { id, ...updateData } = validatedData;
 
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Prepare update data with proper date conversion
     const dataToUpdate: any = {};
@@ -413,13 +387,7 @@ export async function deleteEvent(id: string) {
       return { error: "Event ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Delete event with tenant context (RLS ensures we can only delete our own events)
     await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -441,14 +409,9 @@ export async function deleteEvent(id: string) {
  */
 export async function searchEvents(options: z.infer<typeof searchEventsSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     const validatedOptions = searchEventsSchema.parse(options);
-    const internalOrgId = await getInternalOrgId(orgId);
+    
+    const { internalOrgId } = await getTenantContext();
 
     const events = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.event.findMany({
@@ -497,13 +460,7 @@ export async function searchEvents(options: z.infer<typeof searchEventsSchema>) 
  */
 export async function getEventsStats() {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
     const now = new Date();
 
     const stats = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -543,13 +500,7 @@ export async function getEventsStats() {
  */
 export async function getEstimatesForLeadOrClient(id: string, type: "lead" | "client") {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const estimates = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.estimate.findMany({

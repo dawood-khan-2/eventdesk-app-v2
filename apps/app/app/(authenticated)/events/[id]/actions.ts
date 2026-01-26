@@ -1,10 +1,9 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getInternalOrgId, getTenantContext } from "../../lib/auth-helpers";
+import { getTenantContext } from "../../lib/auth-helpers";
 import { resend } from "@repo/email";
 import { GuestsListTemplate } from "@repo/email/templates/guests-list";
 import { render } from "@react-email/render";
@@ -32,17 +31,10 @@ const createTaskSchema = z.object({
  */
 export async function createTask(data: z.infer<typeof createTaskSchema>) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = createTaskSchema.parse(data);
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Create task with checklists in a transaction
     const task = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -113,13 +105,7 @@ export async function getTasks(eventId: string) {
       return { error: "Event ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const tasks = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.task.findMany({
@@ -161,13 +147,7 @@ export async function getTask(taskId: string) {
       return { error: "Task ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const task = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.task.findUnique({
@@ -230,16 +210,10 @@ export async function updateTask(taskId: string, data: z.infer<typeof updateTask
       return { error: "Task ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = updateTaskSchema.parse(data);
 
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const task = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Verify task exists
@@ -314,13 +288,7 @@ export async function updateChecklistItem(
       return { error: "Checklist item ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const item = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Verify item exists
@@ -372,13 +340,7 @@ export async function deleteChecklistItem(itemId: string) {
       return { error: "Checklist item ID is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Verify item exists
@@ -429,13 +391,7 @@ export async function createChecklistItem(taskId: string, title: string) {
       return { error: "Checklist item title is required" };
     }
 
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     const item = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       // Verify task exists
@@ -493,17 +449,10 @@ export async function createItineraries(
   items: Array<{ title: string; date: string }>
 ) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = createItinerariesSchema.parse({ eventId, items });
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Create itinerary items
     const itineraries = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -552,14 +501,7 @@ export async function createItineraries(
  */
 export async function getItineraries(eventId: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Fetch itineraries
     const itineraries = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -612,17 +554,10 @@ const updateItinerarySchema = z.object({
  */
 export async function updateItinerary(data: { id: string; title?: string; date?: string }) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
     // Validate input
     const validatedData = updateItinerarySchema.parse(data);
 
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Update itinerary
     const itinerary = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
@@ -671,14 +606,7 @@ export async function updateItinerary(data: { id: string; title?: string; date?:
  */
 export async function deleteItinerary(id: string) {
   try {
-    const { orgId } = await auth();
-
-    if (!orgId) {
-      return { error: "Not authenticated" };
-    }
-
-    // Get internal organization ID
-    const internalOrgId = await getInternalOrgId(orgId);
+    const { internalOrgId } = await getTenantContext();
 
     // Delete itinerary
     await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
