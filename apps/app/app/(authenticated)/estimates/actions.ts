@@ -7,7 +7,6 @@ import { getTenantContext } from "../lib/auth-helpers";
 import { SignJWT } from "jose";
 import { env } from "@/env";
 import { resend } from "@repo/email";
-import { keys as emailKeys } from "@repo/email/keys";
 import { EstimateApprovalTemplate } from "@repo/email/templates/estimate-approval";
 import { render } from "@react-email/components";
 import { getFinanceSettings } from "../settings/actions";
@@ -396,7 +395,7 @@ export async function sendEstimateEmail(estimateId: string) {
     );
 
     await resend.emails.send({
-      from: emailKeys().RESEND_FROM,
+      from: `EventDesk <${env.RESEND_FROM}>`,
       to: clientEmail,
       subject: `New Estimate: ${estimate.title}`,
       html: emailHtml,

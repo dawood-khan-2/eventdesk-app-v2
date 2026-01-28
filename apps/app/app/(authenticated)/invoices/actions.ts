@@ -7,7 +7,6 @@ import { getTenantContext } from "../lib/auth-helpers";
 import { SignJWT } from "jose";
 import { env } from "@/env";
 import { resend } from "@repo/email";
-import { keys as emailKeys } from "@repo/email/keys";
 import { InvoiceViewTemplate } from "@repo/email/templates/invoice-view";
 import { render } from "@react-email/components";
 import { getFinanceSettings } from "../settings/actions";
@@ -480,7 +479,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
     );
 
     await resend.emails.send({
-      from: emailKeys().RESEND_FROM,
+      from: `EventDesk <${env.RESEND_FROM}>`,
       to: clientEmail,
       subject: `Invoice ${invoice.number}`,
       html: emailHtml,

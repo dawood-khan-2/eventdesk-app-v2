@@ -687,7 +687,7 @@ export async function requestFeedback(eventId: string) {
       : "");
     
     const { error: emailError } = await resend.emails.send({
-      from: env.RESEND_FROM,
+      from: `EventDesk <${env.RESEND_FROM}>`,
       to: event.client.email,
       subject: `Share your feedback for ${event.name}`,
       react: FeedbackRequestTemplate({
@@ -777,7 +777,7 @@ export async function sendRegistrationLink(eventId: string) {
       : "");
     
     const { error: emailError } = await resend.emails.send({
-      from: env.RESEND_FROM,
+      from: `EventDesk <${env.RESEND_FROM}>`,
       to: event.client.email,
       subject: `Registration link for ${event.name}`,
       react: RegistrationLinkTemplate({

@@ -783,7 +783,7 @@ export async function sendGuestsList(eventId: string) {
 
     // Send email with CSV attachment
     const { error: emailError } = await resend.emails.send({
-      from: env.RESEND_FROM,
+      from: `EventDesk <${env.RESEND_FROM}>`,
       to: event.client.email as string, // Already validated above
       subject: `Guests List for ${event.name}`,
       html: emailHtml,
