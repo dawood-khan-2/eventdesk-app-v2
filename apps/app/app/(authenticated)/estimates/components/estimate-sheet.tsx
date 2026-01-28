@@ -31,6 +31,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@repo/design-system/components/ui/command";
 import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { createEstimate, updateEstimate } from "../actions";
@@ -39,6 +40,8 @@ import { getLeads } from "../../leads/actions";
 import { toast } from "sonner";
 import { getCurrencyConfig } from "@repo/internationalization/currencies";
 import { cn } from "@repo/design-system/lib/utils";
+import { CreateLeadDialog } from "./create-lead-dialog";
+import { CreateClientDialog } from "./create-client-dialog";
 
 interface LineItem {
   id: string;
@@ -77,6 +80,8 @@ interface EstimateSheetProps {
 export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, currencyCode = "USD", serviceCategories, eventData }: EstimateSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [createLeadDialogOpen, setCreateLeadDialogOpen] = useState(false);
+  const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
   const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
   const [clients, setClients] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
   const currency = getCurrencyConfig(currencyCode);
@@ -317,7 +322,36 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
     return subtotal - discount + tax;
   };
 
+  const handleLeadCreated = (leadId: string, leadName: string) => {
+    // Add to local state
+    setLeads(prev => [...prev, { id: leadId, name: leadName, email: null }]);
+
+    // Auto-select the new lead
+    setFormData(prev => ({
+      ...prev,
+      leadOrClientId: leadId,
+      leadOrClientType: "lead"
+    }));
+
+    // Toast already shown by dialog
+  };
+
+  const handleClientCreated = (clientId: string, clientName: string) => {
+    // Add to local state
+    setClients(prev => [...prev, { id: clientId, name: clientName, email: null }]);
+
+    // Auto-select the new client
+    setFormData(prev => ({
+      ...prev,
+      leadOrClientId: clientId,
+      leadOrClientType: "client"
+    }));
+
+    // Toast already shown by dialog
+  };
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
         <SheetHeader>
@@ -576,7 +610,41 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                     <Command>
                       <CommandInput placeholder="Search leads and clients..." />
                       <CommandList>
-                        <CommandEmpty>No lead or client found.</CommandEmpty>
+                        <CommandEmpty>
+                          <div className="py-6 text-center">
+                            <p className="mb-4 text-sm text-muted-foreground">No lead or client found.</p>
+                            {!eventData && (
+                              <div className="space-y-2 px-4">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={() => {
+                                    setComboboxOpen(false);
+                                    setCreateLeadDialogOpen(true);
+                                  }}
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Create New Lead
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={() => {
+                                    setComboboxOpen(false);
+                                    setCreateClientDialogOpen(true);
+                                  }}
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Create New Client
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </CommandEmpty>
                         {leads.length > 0 && (
                           <CommandGroup heading="Leads">
                             {leads.map((lead) => (
@@ -634,6 +702,33 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                               </CommandItem>
                             ))}
                           </CommandGroup>
+                        )}
+                        {!eventData && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => {
+                                  setComboboxOpen(false);
+                                  setCreateLeadDialogOpen(true);
+                                }}
+                                className="text-primary"
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create New Lead
+                              </CommandItem>
+                              <CommandItem
+                                onSelect={() => {
+                                  setComboboxOpen(false);
+                                  setCreateClientDialogOpen(true);
+                                }}
+                                className="text-primary"
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create New Client
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
                         )}
                       </CommandList>
                     </Command>
@@ -866,5 +961,20 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* Lead Creation Dialog */}
+    <CreateLeadDialog
+      open={createLeadDialogOpen}
+      onOpenChange={setCreateLeadDialogOpen}
+      onSuccess={handleLeadCreated}
+    />
+
+    {/* Client Creation Dialog */}
+    <CreateClientDialog
+      open={createClientDialogOpen}
+      onOpenChange={setCreateClientDialogOpen}
+      onSuccess={handleClientCreated}
+    />
+  </>
   );
 }
