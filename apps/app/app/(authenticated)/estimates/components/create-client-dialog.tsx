@@ -1,5 +1,7 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@repo/design-system/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@repo/design-system/components/ui/dialog";
-import { Button } from "@repo/design-system/components/ui/button";
 import {
   Form,
   FormControl,
@@ -18,12 +19,11 @@ import {
   FormMessage,
 } from "@repo/design-system/components/ui/form";
 import { Input } from "@repo/design-system/components/ui/input";
-import { toast } from "sonner";
-import { useTransition, useEffect } from "react";
-import { createClient } from "../../clients/actions";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { createClient } from "../../clients/actions";
 
 const clientFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -86,7 +86,7 @@ export function CreateClientDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create New Client</DialogTitle>
@@ -97,8 +97,9 @@ export function CreateClientDialog({
 
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 py-4"
+            noValidate
+            onSubmit={form.handleSubmit(onSubmit)}
           >
             <FormField
               control={form.control}
@@ -126,8 +127,8 @@ export function CreateClientDialog({
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input
-                      type="email"
                       placeholder="jane@example.com"
+                      type="email"
                       {...field}
                       disabled={isPending}
                     />
@@ -145,8 +146,8 @@ export function CreateClientDialog({
                   <FormLabel>Phone</FormLabel>
                   <FormControl>
                     <Input
-                      type="tel"
                       placeholder="+1 (555) 000-0000"
+                      type="tel"
                       {...field}
                       disabled={isPending}
                     />
@@ -176,14 +177,14 @@ export function CreateClientDialog({
 
             <DialogFooter>
               <Button
+                disabled={isPending}
+                onClick={() => onOpenChange(false)}
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isPending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button disabled={isPending} type="submit">
                 {isPending ? "Creating..." : "Create Client"}
               </Button>
             </DialogFooter>

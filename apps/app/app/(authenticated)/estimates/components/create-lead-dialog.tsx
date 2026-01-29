@@ -1,5 +1,7 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@repo/design-system/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@repo/design-system/components/ui/dialog";
-import { Button } from "@repo/design-system/components/ui/button";
 import {
   Form,
   FormControl,
@@ -25,16 +26,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/design-system/components/ui/select";
-import { toast } from "sonner";
-import { useTransition, useEffect } from "react";
-import { createLead } from "../../leads/actions";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { createLead } from "../../leads/actions";
 
 const leadFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
-  email: z.string().optional(),
+  email: z.string().email().optional(),
   phone: z
     .string()
     .regex(/^[0-9+]*$/, "Phone must contain only numbers and + sign")
@@ -102,7 +102,7 @@ export function CreateLeadDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create New Lead</DialogTitle>
@@ -113,8 +113,9 @@ export function CreateLeadDialog({
 
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 py-4"
+            noValidate
+            onSubmit={form.handleSubmit(onSubmit)}
           >
             <FormField
               control={form.control}
@@ -142,8 +143,8 @@ export function CreateLeadDialog({
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input
-                      type="email"
                       placeholder="john@example.com"
+                      type="email"
                       {...field}
                       disabled={isPending}
                     />
@@ -161,8 +162,8 @@ export function CreateLeadDialog({
                   <FormLabel>Phone</FormLabel>
                   <FormControl>
                     <Input
-                      type="tel"
                       placeholder="+1 (555) 000-0000"
+                      type="tel"
                       {...field}
                       disabled={isPending}
                     />
@@ -197,9 +198,9 @@ export function CreateLeadDialog({
                 <FormItem>
                   <FormLabel>Status *</FormLabel>
                   <Select
+                    disabled={isPending}
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={isPending}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -224,14 +225,14 @@ export function CreateLeadDialog({
 
             <DialogFooter>
               <Button
+                disabled={isPending}
+                onClick={() => onOpenChange(false)}
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isPending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button disabled={isPending} type="submit">
                 {isPending ? "Creating..." : "Create Lead"}
               </Button>
             </DialogFooter>
