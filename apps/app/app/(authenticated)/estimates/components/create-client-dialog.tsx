@@ -9,11 +9,33 @@ import {
   DialogTitle,
 } from "@repo/design-system/components/ui/dialog";
 import { Button } from "@repo/design-system/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@repo/design-system/components/ui/form";
 import { Input } from "@repo/design-system/components/ui/input";
-import { Label } from "@repo/design-system/components/ui/label";
 import { toast } from "sonner";
-import { useState, useTransition } from "react";
+import { useTransition, useEffect } from "react";
 import { createClient } from "../../clients/actions";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+const clientFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  email: z.string().optional(),
+  phone: z
+    .string()
+    .regex(/^[0-9+]*$/, "Phone must contain only numbers and + sign")
+    .optional(),
+  company: z.string().optional(),
+});
+
+type ClientFormValues = z.infer<typeof clientFormSchema>;
 
 type CreateClientDialogProps = {
   open: boolean;
@@ -27,60 +49,27 @@ export function CreateClientDialog({
   onSuccess,
 }: CreateClientDialogProps) {
   const [isPending, startTransition] = useTransition();
-  const [name, setName] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
-  const [company, setCompany] = useState<string>("");
 
-  const resetForm = () => {
-    setName("");
-    setEmail("");
-    setPhone("");
-    setCompany("");
-  };
+  const form = useForm<ClientFormValues>({
+    resolver: zodResolver(clientFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      company: "",
+    },
+  });
 
-  const validateEmail = (email: string): boolean => {
-    if (!email) return true; // Email is optional
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleCreateClient = () => {
-    // Validate required fields
-    if (!name.trim()) {
-      toast.error("Name is required");
-      return;
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      form.reset();
     }
+  }, [open, form]);
 
-    if (name.length > 255) {
-      toast.error("Name must be 255 characters or less");
-      return;
-    }
-
-    // Validate email format if provided
-    if (email && !validateEmail(email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    // Validate field lengths
-    if (phone && phone.length > 50) {
-      toast.error("Phone must be 50 characters or less");
-      return;
-    }
-
-    if (company && company.length > 255) {
-      toast.error("Company must be 255 characters or less");
-      return;
-    }
-
+  const onSubmit = (data: ClientFormValues) => {
     startTransition(async () => {
-      const result = await createClient({
-        name: name.trim(),
-        email: email || undefined,
-        phone: phone || undefined,
-        company: company || undefined,
-      });
+      const result = await createClient(data);
 
       if (result.error) {
         toast.error(result.error);
@@ -90,22 +79,14 @@ export function CreateClientDialog({
       if (result.data) {
         toast.success("Client created successfully");
         onSuccess(result.data.id, result.data.name);
-        resetForm();
+        form.reset();
         onOpenChange(false);
       }
     });
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(open) => {
-        if (!open) {
-          resetForm();
-        }
-        onOpenChange(open);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create New Client</DialogTitle>
@@ -114,68 +95,100 @@ export function CreateClientDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="client-name">Name *</Label>
-            <Input
-              id="client-name"
-              type="text"
-              placeholder="Jane Smith"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-2"
-              disabled={isPending}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 py-4"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Jane Smith"
+                      {...field}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div>
-            <Label htmlFor="client-email">Email</Label>
-            <Input
-              id="client-email"
-              type="email"
-              placeholder="jane@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-2"
-              disabled={isPending}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="jane@example.com"
+                      {...field}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div>
-            <Label htmlFor="client-phone">Phone</Label>
-            <Input
-              id="client-phone"
-              type="tel"
-              placeholder="+1 (555) 000-0000"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-2"
-              disabled={isPending}
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      {...field}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div>
-            <Label htmlFor="client-company">Company</Label>
-            <Input
-              id="client-company"
-              type="text"
-              placeholder="Acme Inc."
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              className="mt-2"
-              disabled={isPending}
+            <FormField
+              control={form.control}
+              name="company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Acme Inc."
+                      {...field}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button onClick={handleCreateClient} disabled={isPending}>
-            {isPending ? "Creating..." : "Create Client"}
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Creating..." : "Create Client"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

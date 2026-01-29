@@ -9,8 +9,15 @@ import {
   DialogTitle,
 } from "@repo/design-system/components/ui/dialog";
 import { Button } from "@repo/design-system/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@repo/design-system/components/ui/form";
 import { Input } from "@repo/design-system/components/ui/input";
-import { Label } from "@repo/design-system/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,8 +26,31 @@ import {
   SelectValue,
 } from "@repo/design-system/components/ui/select";
 import { toast } from "sonner";
-import { useState, useTransition } from "react";
+import { useTransition, useEffect } from "react";
 import { createLead } from "../../leads/actions";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+const leadFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  email: z.string().optional(),
+  phone: z
+    .string()
+    .regex(/^[0-9+]*$/, "Phone must contain only numbers and + sign")
+    .optional(),
+  company: z.string().optional(),
+  status: z.enum([
+    "NEW",
+    "CONTACTED",
+    "PROPOSAL_SENT",
+    "FOLLOW_UP",
+    "CONVERTED",
+    "LOST",
+  ]),
+});
+
+type LeadFormValues = z.infer<typeof leadFormSchema>;
 
 type CreateLeadDialogProps = {
   open: boolean;
@@ -34,63 +64,28 @@ export function CreateLeadDialog({
   onSuccess,
 }: CreateLeadDialogProps) {
   const [isPending, startTransition] = useTransition();
-  const [name, setName] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
-  const [company, setCompany] = useState<string>("");
-  const [status, setStatus] = useState<string>("NEW");
 
-  const resetForm = () => {
-    setName("");
-    setEmail("");
-    setPhone("");
-    setCompany("");
-    setStatus("NEW");
-  };
+  const form = useForm<LeadFormValues>({
+    resolver: zodResolver(leadFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      company: "",
+      status: "NEW",
+    },
+  });
 
-  const validateEmail = (email: string): boolean => {
-    if (!email) return true; // Email is optional
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleCreateLead = () => {
-    // Validate required fields
-    if (!name.trim()) {
-      toast.error("Name is required");
-      return;
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      form.reset();
     }
+  }, [open, form]);
 
-    if (name.length > 255) {
-      toast.error("Name must be 255 characters or less");
-      return;
-    }
-
-    // Validate email format if provided
-    if (email && !validateEmail(email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    // Validate field lengths
-    if (phone && phone.length > 50) {
-      toast.error("Phone must be 50 characters or less");
-      return;
-    }
-
-    if (company && company.length > 255) {
-      toast.error("Company must be 255 characters or less");
-      return;
-    }
-
+  const onSubmit = (data: LeadFormValues) => {
     startTransition(async () => {
-      const result = await createLead({
-        name: name.trim(),
-        email: email || undefined,
-        phone: phone || undefined,
-        company: company || undefined,
-        status: status as "NEW" | "CONTACTED" | "PROPOSAL_SENT" | "FOLLOW_UP" | "CONVERTED" | "LOST",
-      });
+      const result = await createLead(data);
 
       if (result.error) {
         toast.error(result.error);
@@ -100,22 +95,14 @@ export function CreateLeadDialog({
       if (result.data) {
         toast.success("Lead created successfully");
         onSuccess(result.data.id, result.data.name);
-        resetForm();
+        form.reset();
         onOpenChange(false);
       }
     });
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(open) => {
-        if (!open) {
-          resetForm();
-        }
-        onOpenChange(open);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create New Lead</DialogTitle>
@@ -124,85 +111,132 @@ export function CreateLeadDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="lead-name">Name *</Label>
-            <Input
-              id="lead-name"
-              type="text"
-              placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-2"
-              disabled={isPending}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 py-4"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="John Doe"
+                      {...field}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div>
-            <Label htmlFor="lead-email">Email</Label>
-            <Input
-              id="lead-email"
-              type="email"
-              placeholder="john@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-2"
-              disabled={isPending}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="john@example.com"
+                      {...field}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div>
-            <Label htmlFor="lead-phone">Phone</Label>
-            <Input
-              id="lead-phone"
-              type="tel"
-              placeholder="+1 (555) 000-0000"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-2"
-              disabled={isPending}
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      {...field}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div>
-            <Label htmlFor="lead-company">Company</Label>
-            <Input
-              id="lead-company"
-              type="text"
-              placeholder="Acme Inc."
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              className="mt-2"
-              disabled={isPending}
+            <FormField
+              control={form.control}
+              name="company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Acme Inc."
+                      {...field}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div>
-            <Label htmlFor="lead-status">Status *</Label>
-            <Select value={status} onValueChange={setStatus} disabled={isPending}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select a status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="NEW">New</SelectItem>
-                <SelectItem value="CONTACTED">Contacted</SelectItem>
-                <SelectItem value="PROPOSAL_SENT">Proposal Sent</SelectItem>
-                <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
-                <SelectItem value="CONVERTED">Converted</SelectItem>
-                <SelectItem value="LOST">Lost</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status *</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isPending}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="NEW">New</SelectItem>
+                      <SelectItem value="CONTACTED">Contacted</SelectItem>
+                      <SelectItem value="PROPOSAL_SENT">
+                        Proposal Sent
+                      </SelectItem>
+                      <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
+                      <SelectItem value="CONVERTED">Converted</SelectItem>
+                      <SelectItem value="LOST">Lost</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button onClick={handleCreateLead} disabled={isPending}>
-            {isPending ? "Creating..." : "Create Lead"}
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Creating..." : "Create Lead"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
