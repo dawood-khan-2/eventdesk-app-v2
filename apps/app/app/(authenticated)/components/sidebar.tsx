@@ -40,6 +40,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { getUserRole } from "../lib/get-user-role";
 
 type GlobalSidebarProperties = {
   readonly children: ReactNode;
@@ -113,6 +115,15 @@ const data: SidebarData = {
 
 export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
   const sidebar = useSidebar();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadRole() {
+      const role = await getUserRole();
+      setUserRole(role);
+    }
+    loadRole();
+  }, []);
 
   const handleLinkClick = () => {
     // Close mobile sidebar on navigation
@@ -120,6 +131,11 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
       sidebar.setOpenMobile(false);
     }
   };
+
+  // Filter navigation items based on role
+  const filteredNavItems = userRole === "org:member" 
+    ? data.navMain.filter(item => item.title === "Events")
+    : data.navMain;
 
   return (
     <>
@@ -144,7 +160,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
         <SidebarContent>
           <SidebarGroup>
             <SidebarMenu>
-              {data.navMain.map((item) => (
+              {filteredNavItems.map((item) => (
                 <Collapsible
                   asChild
                   defaultOpen={item.isActive}

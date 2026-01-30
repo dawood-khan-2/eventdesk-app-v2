@@ -40,6 +40,7 @@ import {
   createChecklistItem,
   getOrganizationMembers,
 } from "../actions";
+import { getUserRole } from "../../../lib/get-user-role";
 import { TasksTable } from "./tasks-table";
 
 interface TaskEditDialogProps {
@@ -88,20 +89,26 @@ export function TaskEditDialog({
   const [checklists, setChecklists] = useState<any[]>([]);
   const [originalChecklists, setOriginalChecklists] = useState<any[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
-  const [members, setMembers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [members, setMembers] = useState<Array<{ id: string; name: string; email: string; isCurrentUser: boolean }>>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
   
   // Debounce timer
   const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  // Load organization members
+  // Load organization members and user role
   useEffect(() => {
-    async function loadMembers() {
-      const result = await getOrganizationMembers();
-      if (result.data) {
-        setMembers(result.data);
+    async function loadData() {
+      const [membersResult, role] = await Promise.all([
+        getOrganizationMembers(),
+        getUserRole(),
+      ]);
+      
+      if (membersResult.data) {
+        setMembers(membersResult.data);
       }
+      setUserRole(role);
     }
-    loadMembers();
+    loadData();
   }, []);
 
   // Load task data
@@ -420,7 +427,7 @@ export function TaskEditDialog({
                       setAssigneeId(value === "unassigned" ? "" : value);
                       saveField("assigneeId", value === "unassigned" ? null : value);
                     }}
-                    disabled={isClosing}
+                    disabled={isClosing || userRole === "org:member"}
                   >
                     <SelectTrigger id="edit-assignee">
                       <SelectValue placeholder="Select a team member" />

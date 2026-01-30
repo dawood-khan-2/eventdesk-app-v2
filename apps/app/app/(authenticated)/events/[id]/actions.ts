@@ -3,7 +3,7 @@
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTenantContext } from "../../lib/auth-helpers";
+import { getTenantContext, getUserContext } from "../../lib/auth-helpers";
 import { resend } from "@repo/email";
 import { GuestsListTemplate } from "@repo/email/templates/guests-list";
 import { render } from "@react-email/render";
@@ -100,6 +100,7 @@ export async function createTask(data: z.infer<typeof createTaskSchema>) {
 
 /**
  * Get all tasks for an event
+ * For org:member users, only return tasks assigned to them
  */
 export async function getTasks(eventId: string) {
   try {
@@ -107,13 +108,17 @@ export async function getTasks(eventId: string) {
       return { error: "Event ID is required" };
     }
 
-    const { internalOrgId } = await getTenantContext();
+    const { internalOrgId, internalUserId, orgRole } = await getUserContext();
 
     const tasks = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.task.findMany({
         where: { 
           eventId,
           parentTaskId: null, // Only get top-level tasks
+          // For org:member, only show tasks assigned to them
+          ...(orgRole === "org:member" && {
+            assigneeId: internalUserId,
+          }),
         },
         include: {
           checklists: {
@@ -828,7 +833,7 @@ export async function sendGuestsList(eventId: string) {
  */
 export async function getOrganizationMembers() {
   try {
-    const { internalOrgId } = await getTenantContext();
+    const { internalOrgId, internalUserId } = await getUserContext();
 
     const members = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       const orgMembers = await prisma.organizationMember.findMany({
@@ -856,6 +861,7 @@ export async function getOrganizationMembers() {
         id: member.user.id,
         name: `${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim() || member.user.email,
         email: member.user.email,
+        isCurrentUser: member.user.id === internalUserId,
       }));
     });
 

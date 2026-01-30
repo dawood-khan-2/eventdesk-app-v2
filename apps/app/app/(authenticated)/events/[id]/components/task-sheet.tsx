@@ -21,6 +21,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@repo/design-system/components/ui/radio-group";
 import { CalendarIcon, X, Plus } from "lucide-react";
 import { createTask, getOrganizationMembers } from "../actions";
+import { getUserRole } from "../../../lib/get-user-role";
 import { toast } from "sonner";
 import { useTransition, useState, useEffect } from "react";
 import { cn } from "@repo/design-system/lib/utils";
@@ -54,17 +55,24 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
   const [status, setStatus] = useState<"TO_DO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED">("TO_DO");
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [members, setMembers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [members, setMembers] = useState<Array<{ id: string; name: string; email: string; isCurrentUser: boolean }>>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Load organization members
+  // Load user role and organization members
   useEffect(() => {
-    async function loadMembers() {
-      const result = await getOrganizationMembers();
-      if (result.data) {
-        setMembers(result.data);
+    async function loadData() {
+      const [role, membersResult] = await Promise.all([
+        getUserRole(),
+        getOrganizationMembers(),
+      ]);
+      
+      setUserRole(role);
+      
+      if (membersResult.data) {
+        setMembers(membersResult.data);
       }
     }
-    loadMembers();
+    loadData();
   }, []);
 
   // Reset form when sheet opens/closes
@@ -76,10 +84,20 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
       setDueDate(undefined);
       setPriority(inheritedPriority || "MEDIUM");
       setStatus("TO_DO");
-      setAssigneeId("");
+      
+      // For org:member, auto-assign to themselves
+      if (userRole === "org:member" && members.length > 0) {
+        const currentUser = members.find(m => m.isCurrentUser);
+        if (currentUser) {
+          setAssigneeId(currentUser.id);
+        }
+      } else {
+        setAssigneeId("");
+      }
+      
       setChecklistItems([]);
     }
-  }, [open, inheritedPriority, inheritedType]);
+  }, [open, inheritedPriority, inheritedType, userRole, members]);
 
   const handleAddChecklistItem = () => {
     setChecklistItems([...checklistItems, { id: crypto.randomUUID(), title: "" }]);
@@ -274,7 +292,11 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
           {/* Assignee */}
           <div className="space-y-2">
             <Label htmlFor="assignee">Assign To</Label>
-            <Select value={assigneeId || "unassigned"} onValueChange={setAssigneeId}>
+            <Select 
+              value={assigneeId || "unassigned"} 
+              onValueChange={setAssigneeId}
+              disabled={userRole === "org:member"}
+            >
               <SelectTrigger id="assignee">
                 <SelectValue placeholder="Select a team member" />
               </SelectTrigger>
@@ -287,6 +309,9 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
                 ))}
               </SelectContent>
             </Select>
+            {userRole === "org:member" && (
+              <p className="text-xs text-muted-foreground">Tasks are automatically assigned to you</p>
+            )}
           </div>
 
           {/* Checklist Items */}

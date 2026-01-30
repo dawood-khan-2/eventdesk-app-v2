@@ -8,6 +8,7 @@ import { getEstimates } from "../../estimates/actions";
 import { getInvoices } from "../../invoices/actions";
 import { getBills } from "../../bills/actions";
 import { getFinanceSettings, getServiceCategories } from "../../settings/actions";
+import { getUserRole } from "../../lib/get-user-role";
 import { Header } from "../../components/header";
 import { EventOverviewCard } from "./components/event-overview-card";
 import { EventSwitcher } from "./components/event-switcher";
@@ -82,6 +83,7 @@ export default function EventPage() {
   const [regEndDate, setRegEndDate] = useState<Date | undefined>();
   const [regEndTime, setRegEndTime] = useState("");
   const [tasksRefreshKey, setTasksRefreshKey] = useState(0);
+  const [userRole, setUserRole] = useState<string | null>(null);
   
   // Task edit dialog state
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -132,6 +134,15 @@ export default function EventPage() {
       setEvent(result.data);
     });
   }, [id]);
+
+  // Load user role
+  useEffect(() => {
+    async function loadRole() {
+      const role = await getUserRole();
+      setUserRole(role);
+    }
+    loadRole();
+  }, []);
 
   // Load estimates data for this event
   useEffect(() => {
@@ -416,18 +427,23 @@ export default function EventPage() {
           event={event}
           onEditClick={() => setIsSheetOpen(true)}
           onSwitcherClick={() => setIsSwitcherOpen(true)}
+          userRole={userRole}
         />
         
         <Tabs defaultValue="tasks" className="w-full">
           <div className="overflow-x-auto">
             <TabsList className="inline-flex md:flex md:w-full h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
               <TabsTrigger value="tasks" className="whitespace-nowrap px-3 md:flex-1">Tasks</TabsTrigger>
-              <TabsTrigger value="itinerary" className="whitespace-nowrap px-3 md:flex-1">Itinerary</TabsTrigger>
-              <TabsTrigger value="guests" className="whitespace-nowrap px-3 md:flex-1">Guests</TabsTrigger>
-              <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
-              <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
-              <TabsTrigger value="bills" className="whitespace-nowrap px-3 md:flex-1">Bills</TabsTrigger>
-              <TabsTrigger value="feedback" className="whitespace-nowrap px-3 md:flex-1">Feedback</TabsTrigger>
+              {userRole !== "org:member" && (
+                <>
+                  <TabsTrigger value="itinerary" className="whitespace-nowrap px-3 md:flex-1">Itinerary</TabsTrigger>
+                  <TabsTrigger value="guests" className="whitespace-nowrap px-3 md:flex-1">Guests</TabsTrigger>
+                  <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
+                  <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
+                  <TabsTrigger value="bills" className="whitespace-nowrap px-3 md:flex-1">Bills</TabsTrigger>
+                  <TabsTrigger value="feedback" className="whitespace-nowrap px-3 md:flex-1">Feedback</TabsTrigger>
+                </>
+              )}
             </TabsList>
           </div>
 
@@ -443,6 +459,7 @@ export default function EventPage() {
                   className="pl-9"
                 />
               </div>
+              {/* org:member can create tasks */}
               <Button onClick={() => setIsTaskSheetOpen(true)} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Task
