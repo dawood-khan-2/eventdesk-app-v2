@@ -20,7 +20,7 @@ import {
 } from "@repo/design-system/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@repo/design-system/components/ui/radio-group";
 import { CalendarIcon, X, Plus } from "lucide-react";
-import { createTask } from "../actions";
+import { createTask, getOrganizationMembers } from "../actions";
 import { toast } from "sonner";
 import { useTransition, useState, useEffect } from "react";
 import { cn } from "@repo/design-system/lib/utils";
@@ -52,7 +52,20 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
   const [status, setStatus] = useState<"TO_DO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED">("TO_DO");
+  const [assigneeId, setAssigneeId] = useState<string>("");
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [members, setMembers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+
+  // Load organization members
+  useEffect(() => {
+    async function loadMembers() {
+      const result = await getOrganizationMembers();
+      if (result.data) {
+        setMembers(result.data);
+      }
+    }
+    loadMembers();
+  }, []);
 
   // Reset form when sheet opens/closes
   useEffect(() => {
@@ -63,6 +76,7 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
       setDueDate(undefined);
       setPriority(inheritedPriority || "MEDIUM");
       setStatus("TO_DO");
+      setAssigneeId("");
       setChecklistItems([]);
     }
   }, [open, inheritedPriority, inheritedType]);
@@ -105,6 +119,7 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
         status,
         type,
         parentTaskId,
+        assigneeId: assigneeId === "unassigned" ? undefined : assigneeId || undefined,
         checklistItems: validChecklistItems.length > 0 ? validChecklistItems : undefined,
       };
 
@@ -254,6 +269,24 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Assignee */}
+          <div className="space-y-2">
+            <Label htmlFor="assignee">Assign To</Label>
+            <Select value={assigneeId || "unassigned"} onValueChange={setAssigneeId}>
+              <SelectTrigger id="assignee">
+                <SelectValue placeholder="Select a team member" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {members.map((member) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Checklist Items */}

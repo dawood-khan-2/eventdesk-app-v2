@@ -38,6 +38,7 @@ import {
   updateChecklistItem,
   deleteChecklistItem,
   createChecklistItem,
+  getOrganizationMembers,
 } from "../actions";
 import { TasksTable } from "./tasks-table";
 
@@ -83,12 +84,25 @@ export function TaskEditDialog({
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
   const [status, setStatus] = useState<"TO_DO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED">("TO_DO");
+  const [assigneeId, setAssigneeId] = useState<string>("");
   const [checklists, setChecklists] = useState<any[]>([]);
   const [originalChecklists, setOriginalChecklists] = useState<any[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [members, setMembers] = useState<Array<{ id: string; name: string; email: string }>>([]);
   
   // Debounce timer
   const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  // Load organization members
+  useEffect(() => {
+    async function loadMembers() {
+      const result = await getOrganizationMembers();
+      if (result.data) {
+        setMembers(result.data);
+      }
+    }
+    loadMembers();
+  }, []);
 
   // Load task data
   useEffect(() => {
@@ -118,6 +132,7 @@ export function TaskEditDialog({
       setDueDate(result.data.dueDate ? new Date(result.data.dueDate) : undefined);
       setPriority(result.data.priority);
       setStatus(result.data.status);
+      setAssigneeId(result.data.assigneeId || "");
       setChecklists(result.data.checklists || []);
       setOriginalChecklists(result.data.checklists || []);
     } else if (result.error) {
@@ -394,6 +409,31 @@ export function TaskEditDialog({
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                {/* Assignee */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-assignee">Assign To</Label>
+                  <Select
+                    value={assigneeId || "unassigned"}
+                    onValueChange={(value: string) => {
+                      setAssigneeId(value === "unassigned" ? "" : value);
+                      saveField("assigneeId", value === "unassigned" ? null : value);
+                    }}
+                    disabled={isClosing}
+                  >
+                    <SelectTrigger id="edit-assignee">
+                      <SelectValue placeholder="Select a team member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {members.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Due Date */}

@@ -23,6 +23,12 @@ interface Task {
   priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
   status: "TO_DO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   type: "PRE_EVENT" | "ON_EVENT" | "POST_EVENT";
+  assignee?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  } | null;
   checklists: Array<{
     id: string;
     title: string;
@@ -119,6 +125,7 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
                 <TableHead>Due Date</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Assigned To</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -131,6 +138,7 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
                   <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -209,16 +217,20 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[40%]">Title</TableHead>
-              <TableHead className="w-[25%]">Due Date</TableHead>
+              <TableHead className="w-[30%]">Title</TableHead>
+              <TableHead className="w-[20%]">Due Date</TableHead>
               <TableHead className="w-[15%]">Priority</TableHead>
-              <TableHead className="w-[20%]">Status</TableHead>
+              <TableHead className="w-[15%]">Status</TableHead>
+              <TableHead className="w-[20%]">Assigned To</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tasks.map((task) => {
               const { completed: checklistCompleted, total: checklistTotal } = getChecklistStats(task.checklists);
               const { completed: subtaskCompleted, total: subtaskTotal } = getSubtaskStats(task.subtasks);
+              const assigneeName = task.assignee
+                ? `${task.assignee.firstName ?? ""} ${task.assignee.lastName ?? ""}`.trim() || task.assignee.email
+                : "";
               return (
                 <TableRow 
                   key={task.id}
@@ -227,7 +239,7 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
                   )}
                   onClick={() => clickable && onTaskClick?.(task)}
                 >
-                  <TableCell className="w-[40%]">
+                  <TableCell className="w-[30%]">
                     <div>
                       <p className="font-medium">{task.title}</p>
                       {(subtaskTotal > 0 || checklistTotal > 0) && (
@@ -239,7 +251,7 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[25%]">
+                  <TableCell className="w-[20%]">
                     {task.dueDate ? format(new Date(task.dueDate), "PP") : "-"}
                   </TableCell>
                   <TableCell className="w-[15%]">
@@ -247,10 +259,13 @@ export function TasksTable({ tasks, isLoading, type, onTaskClick, clickable = fa
                       {PRIORITY_LABELS[task.priority]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="w-[20%]">
+                  <TableCell className="w-[15%]">
                     <Badge className={cn("border-0", STATUS_STYLES[task.status])}>
                       {STATUS_LABELS[task.status]}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="w-[20%]">
+                    <span className="text-sm">{assigneeName}</span>
                   </TableCell>
                 </TableRow>
               );
