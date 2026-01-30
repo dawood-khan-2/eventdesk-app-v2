@@ -4,6 +4,7 @@ import { database, multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getTenantContext } from "../lib/auth-helpers";
+import { auth, clerkClient } from "@repo/auth/server";
 
 const updateOrganizationSettingsSchema = z.object({
   address: z.string().optional(),
@@ -338,5 +339,101 @@ export async function deletePaymentMode(id: string) {
   } catch (error) {
     console.error("Failed to delete payment mode:", error);
     return { error: "Failed to delete payment mode" };
+  }
+}
+
+// Team invitation actions
+const inviteTeamMemberSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export type InviteTeamMemberInput = z.infer<typeof inviteTeamMemberSchema>;
+
+export async function inviteTeamMember(input: InviteTeamMemberInput) {
+  try {
+    const validated = inviteTeamMemberSchema.parse(input);
+    
+    const { orgId } = await auth();
+
+    if (!orgId) {
+      return { error: "No organization found" };
+    }
+
+    const client = await clerkClient();
+    
+    // Create organization invitation with org:member role
+    await client.organizations.createOrganizationInvitation({
+      organizationId: orgId,
+      emailAddress: validated.email,
+      role: "org:member",
+    });
+
+    return { data: { success: true } };
+  } catch (error) {
+    console.error("Failed to invite team member:", error);
+
+    if (error instanceof z.ZodError) {
+      return { error: "Invalid email address" };
+    }
+
+    return { error: "Failed to send invitation" };
+  }
+}
+
+export async function getTeamMembers() {
+  try {
+    const { orgId } = await auth();
+
+    if (!orgId) {
+      return { error: "No organization found" };
+    }
+
+    const client = await clerkClient();
+    
+    // Get organization memberships
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId: orgId,
+    });
+
+    // Transform to simpler format and filter to only show org:member role
+    const members = memberships.data
+      .filter((membership) => membership.role === "org:member")
+      .map((membership) => ({
+        id: membership.id,
+        userId: membership.publicUserData?.userId ?? "",
+        name: `${membership.publicUserData?.firstName ?? ""} ${membership.publicUserData?.lastName ?? ""}`.trim() || "Unknown",
+        email: membership.publicUserData?.identifier ?? "",
+        role: membership.role,
+      }));
+
+    return { data: members };
+  } catch (error) {
+    console.error("Failed to get team members:", error);
+    return { error: "Failed to get team members" };
+  }
+}
+
+export async function removeTeamMember(userId: string) {
+  try {
+    const { orgId } = await auth();
+
+    if (!orgId) {
+      return { error: "No organization found" };
+    }
+
+    const client = await clerkClient();
+    
+    // Remove user from organization
+    await client.organizations.deleteOrganizationMembership({
+      organizationId: orgId,
+      userId,
+    });
+
+    revalidatePath("/settings");
+
+    return { data: { success: true } };
+  } catch (error) {
+    console.error("Failed to remove team member:", error);
+    return { error: "Failed to remove team member" };
   }
 }

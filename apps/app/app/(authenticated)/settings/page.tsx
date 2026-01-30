@@ -1,18 +1,21 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/design-system/components/ui/tabs";
 import { formatCurrencyList } from "@repo/internationalization";
 import { Header } from "../components/header";
-import { getFinanceSettings, getServiceCategories, getOrganizationSettings, getPaymentModes } from "./actions";
+import { getFinanceSettings, getServiceCategories, getOrganizationSettings, getPaymentModes, getTeamMembers } from "./actions";
 import { FinanceSettingsForm } from "./components/finance-settings-form";
 import { ServiceCategories } from "./components/service-categories";
 import { OrganizationSettingsForm } from "./components/organization-settings-form";
 import { PaymentModes } from "./components/payment-modes";
+import { InviteTeamMemberDialog } from "./components/invite-team-member-dialog";
+import { TeamMembersTable } from "./components/team-members-table";
 
 export default async function SettingsPage() {
-  const [financeSettings, serviceCategories, organizationSettings, paymentModes] = await Promise.all([
+  const [financeSettings, serviceCategories, organizationSettings, paymentModes, teamMembers] = await Promise.all([
     getFinanceSettings(),
     getServiceCategories(),
     getOrganizationSettings(),
     getPaymentModes(),
+    getTeamMembers(),
   ]);
 
   const currencies = formatCurrencyList();
@@ -62,10 +65,20 @@ export default async function SettingsPage() {
 
           <TabsContent value="team" className="space-y-4 mt-6">
             <div className="rounded-lg border p-8">
-              <h2 className="text-lg font-semibold mb-2">Team Settings</h2>
-              <p className="text-sm text-muted-foreground">
-                Manage team members, roles, and permissions.
-              </p>
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-lg font-semibold mb-2">Team Settings</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Manage team members, roles, and permissions.
+                  </p>
+                </div>
+                <InviteTeamMemberDialog />
+              </div>
+              {teamMembers.error ? (
+                <p className="text-sm text-destructive">{teamMembers.error}</p>
+              ) : (
+                <TeamMembersTable members={teamMembers.data ?? []} />
+              )}
             </div>
           </TabsContent>
 
