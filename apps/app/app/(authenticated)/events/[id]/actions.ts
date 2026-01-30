@@ -3,7 +3,7 @@
 import { multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTenantContext } from "../../lib/auth-helpers";
+import { getTenantContext, getUserContext } from "../../lib/auth-helpers";
 import { resend } from "@repo/email";
 import { GuestsListTemplate } from "@repo/email/templates/guests-list";
 import { render } from "@react-email/render";
@@ -21,6 +21,7 @@ const createTaskSchema = z.object({
   status: z.enum(["TO_DO", "IN_PROGRESS", "COMPLETED", "CANCELLED"]),
   type: z.enum(["PRE_EVENT", "ON_EVENT", "POST_EVENT"]),
   parentTaskId: z.string().cuid().optional(),
+  assigneeId: z.string().cuid().optional().or(z.literal("")),
   checklistItems: z.array(z.object({
     title: z.string().min(1, "Checklist item cannot be empty"),
   })).optional(),
@@ -60,6 +61,7 @@ export async function createTask(data: z.infer<typeof createTaskSchema>) {
           status: validatedData.status,
           type: validatedData.type,
           parentTaskId: validatedData.parentTaskId || null,
+          assigneeId: validatedData.assigneeId || null,
           // Create checklists if provided
           checklists: validatedData.checklistItems && validatedData.checklistItems.length > 0
             ? {
@@ -98,6 +100,7 @@ export async function createTask(data: z.infer<typeof createTaskSchema>) {
 
 /**
  * Get all tasks for an event
+ * For org:member users, only return tasks assigned to them
  */
 export async function getTasks(eventId: string) {
   try {
@@ -105,13 +108,17 @@ export async function getTasks(eventId: string) {
       return { error: "Event ID is required" };
     }
 
-    const { internalOrgId } = await getTenantContext();
+    const { internalOrgId, internalUserId, orgRole } = await getUserContext();
 
     const tasks = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.task.findMany({
         where: { 
           eventId,
           parentTaskId: null, // Only get top-level tasks
+          // For org:member, only show tasks assigned to them
+          ...(orgRole === "org:member" && {
+            assigneeId: internalUserId,
+          }),
         },
         include: {
           checklists: {
@@ -120,6 +127,14 @@ export async function getTasks(eventId: string) {
           subtasks: {
             include: {
               checklists: true,
+            },
+          },
+          assignee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
             },
           },
         },
@@ -198,6 +213,7 @@ const updateTaskSchema = z.object({
   dueDate: z.string().nullable().optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
   status: z.enum(["TO_DO", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
+  assigneeId: z.string().cuid().nullable().optional(),
   type: z.enum(["PRE_EVENT", "ON_EVENT", "POST_EVENT"]).optional(),
 });
 
@@ -783,7 +799,7 @@ export async function sendGuestsList(eventId: string) {
 
     // Send email with CSV attachment
     const { error: emailError } = await resend.emails.send({
-      from: env.RESEND_FROM,
+      from: `EventDesk <${env.RESEND_FROM}>`,
       to: event.client.email as string, // Already validated above
       subject: `Guests List for ${event.name}`,
       html: emailHtml,
@@ -809,5 +825,49 @@ export async function sendGuestsList(eventId: string) {
     }
     
     return { error: "Failed to send guests list" };
+  }
+}
+
+/**
+ * Get all organization members for task assignment
+ */
+export async function getOrganizationMembers() {
+  try {
+    const { internalOrgId, internalUserId } = await getUserContext();
+
+    const members = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      const orgMembers = await prisma.organizationMember.findMany({
+        where: {
+          orgId: internalOrgId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: {
+          user: {
+            firstName: "asc",
+          },
+        },
+      });
+
+      return orgMembers.map((member) => ({
+        id: member.user.id,
+        name: `${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim() || member.user.email,
+        email: member.user.email,
+        isCurrentUser: member.user.id === internalUserId,
+      }));
+    });
+
+    return { data: members };
+  } catch (error) {
+    console.error("Failed to get organization members:", error);
+    return { error: "Failed to get organization members" };
   }
 }

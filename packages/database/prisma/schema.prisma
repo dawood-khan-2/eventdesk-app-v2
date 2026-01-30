@@ -37,6 +37,7 @@ model User {
   
   // Relationships
   organizationMemberships   OrganizationMember[]
+  assignedTasks             Task[]
 
   @@map("users")
   @@index([clerkId])
@@ -271,6 +272,7 @@ model Task {
   priority      TaskPriority    @default(MEDIUM)
   status        TaskStatus      @default(TO_DO)
   type          TaskType        @default(PRE_EVENT)
+  assigneeId    String?
 
   // Audit fields
   createdAt       DateTime      @default(now())
@@ -281,6 +283,8 @@ model Task {
   parentTask    Task?       @relation("TaskToSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
   subtasks      Task[]      @relation("TaskToSubtasks")
   checklists    Checklist[]
+  assignee      User?       @relation(fields: [assigneeId], references: [id])
+
 
   @@map("tasks")
   @@index([tenantId])

@@ -19,6 +19,7 @@ import { EventsTable } from "./components/events-table";
 import { EventSheet } from "./components/event-sheet";
 import { searchEvents, getEvents, getEventsStats } from "./actions";
 import { Header } from "../components/header";
+import { getUserRole } from "../lib/get-user-role";
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -49,7 +50,17 @@ export default function EventsPage() {
   const [sheetMode, setSheetMode] = useState<"create" | "view" | "edit">("create");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const itemsPerPage = 20;
+
+  // Load user role
+  useEffect(() => {
+    async function loadRole() {
+      const role = await getUserRole();
+      setUserRole(role);
+    }
+    loadRole();
+  }, []);
 
   // Load events and stats on mount
   useEffect(() => {
@@ -146,14 +157,17 @@ export default function EventsPage() {
               />
             </div>
             
-            <Button onClick={() => {
-              setSelectedEvent(null);
-              setSheetMode("create");
-              setIsSheetOpen(true);
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Event
-            </Button>
+            {/* Hide Add Event button for org:member */}
+            {userRole !== "org:member" && (
+              <Button onClick={() => {
+                setSelectedEvent(null);
+                setSheetMode("create");
+                setIsSheetOpen(true);
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Event
+              </Button>
+            )}
           </div>
         </div>
 
@@ -172,6 +186,7 @@ export default function EventsPage() {
           isLoading={isPending}
           onEventClick={handleEventClick}
           onEditClick={handleEditClick}
+          userRole={userRole}
         />
 
         {/* Pagination */}

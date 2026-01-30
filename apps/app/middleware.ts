@@ -43,6 +43,27 @@ export default authMiddleware(async (auth, request) => {
     return NextResponse.redirect(url);
   }
 
+  // RBAC: Restrict org:member to only /events routes
+  if (session.userId && session.orgId && session.orgRole === "org:member") {
+    const isEventsRoute = pathname === "/events" || pathname.startsWith("/events/");
+    
+    // If org:member tries to access any route other than /events, redirect to /events
+    if (!isEventsRoute && pathname !== "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/events";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    
+    // Redirect dashboard (/) to /events for org:member
+    if (pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/events";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   return securityHeaders();
 }) as unknown as NextMiddleware;
 

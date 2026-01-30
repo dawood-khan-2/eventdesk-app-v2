@@ -9,9 +9,10 @@ interface EventOverviewCardProps {
   event: any;
   onEditClick: () => void;
   onSwitcherClick: () => void;
+  userRole?: string | null;
 }
 
-export function EventOverviewCard({ event, onEditClick, onSwitcherClick }: EventOverviewCardProps) {
+export function EventOverviewCard({ event, onEditClick, onSwitcherClick, userRole }: EventOverviewCardProps) {
   const formatDateTime = (date: Date) => {
     return format(new Date(date), "MMM d, yyyy 'at' h:mm a");
   };
@@ -23,15 +24,17 @@ export function EventOverviewCard({ event, onEditClick, onSwitcherClick }: Event
         <div className="flex items-start justify-between gap-2">
           <h1 className="text-xl font-bold flex-1">{event.name}</h1>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onEditClick}
-              title="Edit event"
-            >
-              <Pencil className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
-            </Button>
+            {userRole !== "org:member" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onEditClick}
+                title="Edit event"
+              >
+                <Pencil className="h-4 w-4" />
+                <span className="sr-only">Edit</span>
+              </Button>
+            )}
             
             <Button
               variant="ghost"
@@ -97,15 +100,17 @@ export function EventOverviewCard({ event, onEditClick, onSwitcherClick }: Event
 
         {/* Right side - Action buttons */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onEditClick}
-            title="Edit event"
-          >
-            <Pencil className="h-4 w-4" />
-            <span className="sr-only">Edit</span>
-          </Button>
+          {userRole !== "org:member" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onEditClick}
+              title="Edit event"
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+          )}
           
           <Button
             variant="ghost"

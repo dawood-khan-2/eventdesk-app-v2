@@ -8,7 +8,7 @@ import { resend } from "@repo/email";
 import { FeedbackRequestTemplate } from "@repo/email/templates/feedback-request";
 import { RegistrationLinkTemplate } from "@repo/email/templates/registration-link";
 import { env } from "@/env";
-import { getTenantContext } from "../lib/auth-helpers";
+import { getTenantContext, getUserContext } from "../lib/auth-helpers";
 
 /**
  * Event filter types
@@ -250,6 +250,7 @@ export async function createEvent(data: z.infer<typeof createEventSchema>) {
 
 /**
  * Get all events for the current organization
+ * For org:member users, only return events where they have assigned tasks
  */
 export async function getEvents(options?: {
   filter?: EventFilter;
@@ -259,7 +260,7 @@ export async function getEvents(options?: {
   offset?: number;
 }) {
   try {
-    const { internalOrgId } = await getTenantContext();
+    const { internalOrgId, internalUserId, orgRole } = await getUserContext();
 
     const events = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.event.findMany({
@@ -268,6 +269,14 @@ export async function getEvents(options?: {
           ...(options?.clientId && { clientId: options.clientId }),
           ...(options?.cursor && {
             id: { lt: options.cursor },
+          }),
+          // For org:member, only show events with tasks assigned to them
+          ...(orgRole === "org:member" && {
+            tasks: {
+              some: {
+                assigneeId: internalUserId,
+              },
+            },
           }),
         },
         include: {
@@ -460,22 +469,38 @@ export async function searchEvents(options: z.infer<typeof searchEventsSchema>) 
  */
 export async function getEventsStats() {
   try {
-    const { internalOrgId } = await getTenantContext();
+    const { internalOrgId, internalUserId, orgRole } = await getUserContext();
     const now = new Date();
 
     const stats = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+      // For org:member, only count events with tasks assigned to them
+      const whereClause = orgRole === "org:member" 
+        ? { tasks: { some: { assigneeId: internalUserId } } }
+        : {};
+
       const [total, upcoming, ongoing, completed] = await Promise.all([
-        prisma.event.count(),
-        prisma.event.count({ where: { startDate: { gt: now } } }),
+        prisma.event.count({ where: whereClause }),
+        prisma.event.count({ 
+          where: { 
+            ...whereClause,
+            startDate: { gt: now } 
+          } 
+        }),
         prisma.event.count({
           where: {
+            ...whereClause,
             AND: [
               { startDate: { lte: now } },
               { endDate: { gte: now } },
             ],
           },
         }),
-        prisma.event.count({ where: { endDate: { lt: now } } }),
+        prisma.event.count({ 
+          where: { 
+            ...whereClause,
+            endDate: { lt: now } 
+          } 
+        }),
       ]);
 
       return {
@@ -687,7 +712,7 @@ export async function requestFeedback(eventId: string) {
       : "");
     
     const { error: emailError } = await resend.emails.send({
-      from: env.RESEND_FROM,
+      from: `EventDesk <${env.RESEND_FROM}>`,
       to: event.client.email,
       subject: `Share your feedback for ${event.name}`,
       react: FeedbackRequestTemplate({
@@ -777,7 +802,7 @@ export async function sendRegistrationLink(eventId: string) {
       : "");
     
     const { error: emailError } = await resend.emails.send({
-      from: env.RESEND_FROM,
+      from: `EventDesk <${env.RESEND_FROM}>`,
       to: event.client.email,
       subject: `Registration link for ${event.name}`,
       react: RegistrationLinkTemplate({

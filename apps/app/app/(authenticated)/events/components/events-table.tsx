@@ -29,6 +29,7 @@ interface EventsTableProps {
   isLoading: boolean;
   onEventClick: (event: any) => void;
   onEditClick: (event: any) => void;
+  userRole?: string | null;
 }
 
 function getEventStatus(event: any) {
@@ -50,6 +51,7 @@ export function EventsTable({
   isLoading,
   onEventClick,
   onEditClick,
+  userRole,
 }: EventsTableProps) {
   const router = useRouter();
 
@@ -152,15 +154,17 @@ export function EventsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditClick(event);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
+                        {userRole !== "org:member" && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditClick(event);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
@@ -227,17 +231,19 @@ export function EventsTable({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditClick(event);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
+                      {userRole !== "org:member" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditClick(event);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
