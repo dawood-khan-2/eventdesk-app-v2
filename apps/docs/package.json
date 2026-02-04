@@ -7,5 +7,8 @@
   },
   "devDependencies": {
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "mintlify": "4.2.312"
   }
 }
