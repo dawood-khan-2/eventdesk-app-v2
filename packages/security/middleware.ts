@@ -12,6 +12,8 @@ export const noseconeOptions: Options = {
   // https://www.next-forge.com/packages/security/headers for guidance on how
   // to configure it.
   contentSecurityPolicy: false,
+  // Use credentialless mode to allow third-party widgets like Tawk.to
+  crossOriginEmbedderPolicy: { policy: "credentialless" },
 };
 
 export const noseconeOptionsWithToolbar: Options =
