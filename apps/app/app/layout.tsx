@@ -5,7 +5,6 @@ import { DesignSystemProvider } from "@repo/design-system";
 import { fonts } from "@repo/design-system/lib/fonts";
 import { Toolbar } from "@repo/feature-flags/components/toolbar";
 import { Toaster } from "sonner";
-import Script from "next/script";
 import type { ReactNode } from "react";
 
 type RootLayoutProperties = {
@@ -29,9 +28,6 @@ const RootLayout = ({ children }: RootLayoutProperties) => (
       </AnalyticsProvider>
       <Toaster richColors />
       <Toolbar />
-      
-      {/* Tawk.to Chat Widget */}
-      <Script src="/scripts/tawk.js" strategy="afterInteractive" />
     </body>
   </html>
 );
