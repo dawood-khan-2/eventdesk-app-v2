@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getTenantContext } from "../lib/auth-helpers";
 import { auth, clerkClient } from "@repo/auth/server";
+import { stripe } from "@repo/payments";
+import { env } from "@/env";
 
 const updateOrganizationSettingsSchema = z.object({
   address: z.string().optional(),
@@ -435,5 +437,75 @@ export async function removeTeamMember(userId: string) {
   } catch (error) {
     console.error("Failed to remove team member:", error);
     return { error: "Failed to remove team member" };
+  }
+}
+
+// Stripe Embedded Checkout actions
+const createEmbeddedSessionSchema = z.object({
+  priceId: z.string().startsWith("price_"),
+  quantity: z.number().min(1).default(1),
+});
+
+export type CreateEmbeddedSessionInput = z.infer<typeof createEmbeddedSessionSchema>;
+
+export async function createEmbeddedCheckoutSession(input: CreateEmbeddedSessionInput) {
+  try {
+    const validated = createEmbeddedSessionSchema.parse(input);
+
+    const { internalOrgId } = await getTenantContext();
+
+    const appUrl = env.NEXT_PUBLIC_APP_URL;
+
+    const session = await stripe.checkout.sessions.create({
+      ui_mode: "embedded",
+      mode: "subscription",
+      line_items: [
+        {
+          price: validated.priceId,
+          quantity: validated.quantity,
+        },
+      ],
+      // helpful to map later
+      client_reference_id: internalOrgId,
+      redirect_on_completion: "always",
+      return_url: `${appUrl}/settings?tab=subscription&status=success&session_id={CHECKOUT_SESSION_ID}`,
+    });
+
+    if (!session.client_secret) {
+      return { error: "Failed to create checkout session" };
+    }
+
+    return { data: { clientSecret: session.client_secret } };
+  } catch (error) {
+    console.error("Failed to create embedded checkout session:", error);
+    if (error instanceof z.ZodError) {
+      return { error: "Invalid input" };
+    }
+    return { error: "Failed to create embedded checkout session" };
+  }
+}
+
+export async function validateCheckoutSession(sessionId: string) {
+  try {
+    if (!sessionId?.startsWith("cs_")) {
+      return { error: "Invalid session id" };
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    return {
+      data: {
+        id: session.id,
+        status: session.status,
+        payment_status: session.payment_status,
+        subscription: typeof session.subscription === "string" ? session.subscription : session.subscription?.id,
+        customer: typeof session.customer === "string" ? session.customer : session.customer?.id,
+        amount_total: session.amount_total,
+        currency: session.currency,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to validate checkout session:", error);
+    return { error: "Failed to validate checkout session" };
   }
 }

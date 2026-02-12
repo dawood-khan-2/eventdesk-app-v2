@@ -6,6 +6,7 @@ import { keys as email } from "@repo/email/keys";
 import { keys as flags } from "@repo/feature-flags/keys";
 import { keys as core } from "@repo/next-config/keys";
 import { keys as notifications } from "@repo/notifications/keys";
+import { keys as payments } from "@repo/payments/keys";
 import { keys as observability } from "@repo/observability/keys";
 import { keys as security } from "@repo/security/keys";
 import { keys as storage } from "@repo/storage/keys";
@@ -22,6 +23,7 @@ export const env = createEnv({
     email(),
     flags(),
     notifications(),
+    payments(),
     observability(),
     security(),
     storage(),

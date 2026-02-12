@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@hcaptcha/react-hcaptcha": "^1.11.0",
     "@repo/analytics": "*",
     "@repo/auth": "*",
     "@repo/collaboration": "*",
@@ -23,8 +24,8 @@
     "@repo/security": "*",
     "@repo/seo": "*",
     "@repo/webhooks": "*",
-    "@hcaptcha/react-hcaptcha": "^1.11.0",
     "@sentry/nextjs": "^10.22.0",
+    "@stripe/stripe-js": "^5.10.0",
     "@t3-oss/env-nextjs": "^0.13.8",
     "fuse.js": "^7.1.0",
     "import-in-the-middle": "^2.0.0",
