@@ -7,6 +7,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { env } from "@/env";
 import { createEmbeddedCheckoutSession, validateCheckoutSession } from "../actions";
 import { useSearchParams, useRouter } from "next/navigation";
+import { ContactSalesDialog } from "./contact-sales-dialog";
 
 export function Subscriptions() {
   const [error, setError] = useState<string | null>(null);
@@ -88,21 +89,31 @@ export function Subscriptions() {
       )}
 
       {mode === "pricing" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="rounded-lg border p-6">
             <h3 className="text-base font-semibold">Free</h3>
-            <p className="text-sm text-muted-foreground mt-2">Basic features for getting started.</p>
+            <p className="text-sm text-muted-foreground mt-2">All features. Upto 2 events per month.</p>
             <div className="mt-4">
               <Button disabled>Current Plan</Button>
             </div>
           </div>
-          <div className="rounded-lg border p-6">
+          <div className="rounded-lg border border-primary p-6 relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+              Recommended
+            </div>
             <h3 className="text-base font-semibold">Pro</h3>
-            <p className="text-sm text-muted-foreground mt-2">Advanced features for teams.</p>
+            <p className="text-sm text-muted-foreground mt-2">All features. Unlimited events per month.</p>
             <div className="mt-4">
               <Button onClick={startProCheckout} disabled={isPending}>
                 {isPending ? "Starting Checkout..." : "Upgrade to Pro"}
               </Button>
+            </div>
+          </div>
+          <div className="rounded-lg border p-6">
+            <h3 className="text-base font-semibold">Pro +</h3>
+            <p className="text-sm text-muted-foreground mt-2">Custom features tailored to fit your workflow.</p>
+            <div className="mt-4">
+              <ContactSalesDialog />
             </div>
           </div>
         </div>

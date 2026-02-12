@@ -6,6 +6,8 @@ import { z } from "zod";
 import { getTenantContext } from "../lib/auth-helpers";
 import { auth, clerkClient } from "@repo/auth/server";
 import { stripe } from "@repo/payments";
+import { resend } from "@repo/email";
+import { keys as emailKeys } from "@repo/email/keys";
 import { env } from "@/env";
 
 const updateOrganizationSettingsSchema = z.object({
@@ -507,5 +509,55 @@ export async function validateCheckoutSession(sessionId: string) {
   } catch (error) {
     console.error("Failed to validate checkout session:", error);
     return { error: "Failed to validate checkout session" };
+  }
+}
+
+// Contact Sales actions
+const contactSalesSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  jobTitle: z.string().min(1, "Job title is required"),
+  companySize: z.enum(["1-24", "25-99", "100-249", "250-499", "500+"], {
+    errorMap: () => ({ message: "Please select a company size" }),
+  }),
+  comments: z.string().optional(),
+});
+
+export type ContactSalesInput = z.infer<typeof contactSalesSchema>;
+
+export async function submitContactSales(input: ContactSalesInput) {
+  try {
+    const validated = contactSalesSchema.parse(input);
+
+    const salesEmail = env.SALES_EMAIL;
+    const fromEmail = emailKeys().RESEND_FROM;
+
+    const htmlContent = `
+      <h2>New Pro+ Inquiry</h2>
+      <p><strong>Name:</strong> ${validated.name}</p>
+      <p><strong>Email:</strong> ${validated.email}</p>
+      ${validated.phone ? `<p><strong>Phone:</strong> ${validated.phone}</p>` : ""}
+      <p><strong>Job Title:</strong> ${validated.jobTitle}</p>
+      <p><strong>Company Size:</strong> ${validated.companySize}</p>
+      ${validated.comments ? `<p><strong>Comments:</strong></p><p>${validated.comments}</p>` : ""}
+    `;
+
+    await resend.emails.send({
+      from: fromEmail,
+      to: salesEmail,
+      subject: "New Pro+ Request",
+      html: htmlContent,
+    });
+
+    return { data: { success: true } };
+  } catch (error) {
+    console.error("Failed to submit contact sales request:", error);
+
+    if (error instanceof z.ZodError) {
+      return { error: error.errors[0]?.message ?? "Invalid input" };
+    }
+
+    return { error: "Failed to submit request. Please try again." };
   }
 }
