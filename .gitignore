@@ -277,3 +277,4 @@ packages/database/generated
 .contentlayer
 .content-collections
 .source
+.docs
