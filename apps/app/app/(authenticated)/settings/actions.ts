@@ -3,7 +3,7 @@
 import { database, multiTenantDb } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTenantContext } from "../lib/auth-helpers";
+import { getTenantContext, getUserContext } from "../lib/auth-helpers";
 import { auth, clerkClient } from "@repo/auth/server";
 import { stripe } from "@repo/payments";
 import { resend } from "@repo/email";
@@ -454,7 +454,7 @@ export async function createEmbeddedCheckoutSession(input: CreateEmbeddedSession
   try {
     const validated = createEmbeddedSessionSchema.parse(input);
 
-    const { internalOrgId } = await getTenantContext();
+    const { internalUserId } = await getUserContext();
 
     const appUrl = env.NEXT_PUBLIC_APP_URL;
 
@@ -468,7 +468,7 @@ export async function createEmbeddedCheckoutSession(input: CreateEmbeddedSession
         },
       ],
       // helpful to map later
-      client_reference_id: internalOrgId,
+      client_reference_id: internalUserId,
       redirect_on_completion: "always",
       return_url: `${appUrl}/settings?tab=subscription&status=success&session_id={CHECKOUT_SESSION_ID}`,
     });

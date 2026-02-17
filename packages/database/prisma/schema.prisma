@@ -38,6 +38,7 @@ model User {
   // Relationships
   organizationMemberships   OrganizationMember[]
   assignedTasks             Task[]
+  subscription              Subscription?
 
   @@map("users")
   @@index([clerkId])
@@ -527,4 +528,20 @@ model Guest {
   @@index([eventId])
 }
 
+model Subscription {
+  id                        String   @id @default(cuid())
 
+  userId                    String   @unique
+  stripeCustomerId          String
+  stripeSubscriptionId      String   @unique
+
+  // Audit Fields
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
+  // Relationships
+  user          User         @relation(fields: [userId], references: [id])
+
+  @@map("subscriptions")
+  @@index([userId])
+}

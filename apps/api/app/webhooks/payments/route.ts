@@ -1,5 +1,5 @@
 import { analytics } from "@repo/analytics/server";
-import { clerkClient } from "@repo/auth/server";
+import { database } from "@repo/database";
 import { parseError } from "@repo/observability/error";
 import { log } from "@repo/observability/log";
 import type { Stripe } from "@repo/payments";
@@ -8,57 +8,70 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
 
-const getUserFromCustomerId = async (customerId: string) => {
-  const clerk = await clerkClient();
-  const users = await clerk.users.getUserList();
-
-  const user = users.data.find(
-    (currentUser) => currentUser.privateMetadata.stripeCustomerId === customerId
-  );
-
-  return user;
-};
-
 const handleCheckoutSessionCompleted = async (
   data: Stripe.Checkout.Session
 ) => {
-  if (!data.customer) {
+  // Extract required data from checkout session
+  const userId = data.client_reference_id;
+  const customerId = typeof data.customer === "string" ? data.customer : data.customer?.id;
+  const subscriptionId = typeof data.subscription === "string" ? data.subscription : data.subscription?.id;
+
+  if (!userId || !customerId || !subscriptionId) {
+    log.warn("Missing required data in checkout.session.completed", {
+      userId,
+      customerId,
+      subscriptionId,
+    });
     return;
   }
 
-  const customerId =
-    typeof data.customer === "string" ? data.customer : data.customer.id;
-  const user = await getUserFromCustomerId(customerId);
+  // Create or update subscription record
+  await database.subscription.upsert({
+    where: { userId },
+    create: {
+      userId,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
+    },
+    update: {
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
+    },
+  });
 
-  if (!user) {
-    return;
-  }
+  log.info("Subscription created", { userId, subscriptionId });
 
   analytics.capture({
     event: "User Subscribed",
-    distinctId: user.id,
+    distinctId: userId,
   });
 };
 
-const handleSubscriptionScheduleCanceled = async (
-  data: Stripe.SubscriptionSchedule
+const handleSubscriptionDeleted = async (
+  data: Stripe.Subscription
 ) => {
-  if (!data.customer) {
+  const subscriptionId = data.id;
+
+  if (!subscriptionId) {
+    log.warn("Missing subscription ID in customer.subscription.deleted");
     return;
   }
 
-  const customerId =
-    typeof data.customer === "string" ? data.customer : data.customer.id;
-  const user = await getUserFromCustomerId(customerId);
+  try {
+    // Delete directly by unique stripeSubscriptionId (returns deleted record)
+    const subscription = await database.subscription.delete({
+      where: { stripeSubscriptionId: subscriptionId },
+    });
 
-  if (!user) {
-    return;
+    log.info("Subscription deleted", { userId: subscription.userId, subscriptionId });
+
+    analytics.capture({
+      event: "User Unsubscribed",
+      distinctId: subscription.userId,
+    });
+  } catch (error) {
+    log.warn("Subscription not found", { subscriptionId });
   }
-
-  analytics.capture({
-    event: "User Unsubscribed",
-    distinctId: user.id,
-  });
 };
 
 export const POST = async (request: Request): Promise<Response> => {
@@ -86,8 +99,8 @@ export const POST = async (request: Request): Promise<Response> => {
         await handleCheckoutSessionCompleted(event.data.object);
         break;
       }
-      case "subscription_schedule.canceled": {
-        await handleSubscriptionScheduleCanceled(event.data.object);
+      case "customer.subscription.deleted": {
+        await handleSubscriptionDeleted(event.data.object);
         break;
       }
       default: {
