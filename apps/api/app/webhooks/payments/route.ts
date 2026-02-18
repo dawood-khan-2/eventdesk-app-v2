@@ -47,6 +47,58 @@ const handleCheckoutSessionCompleted = async (
   });
 };
 
+const handleSubscriptionUpdated = async (
+  data: Stripe.Subscription
+) => {
+  const subscriptionId = data.id;
+  const customerId = typeof data.customer === "string" ? data.customer : data.customer?.id;
+
+  if (!subscriptionId) {
+    log.warn("Missing subscription ID in customer.subscription.updated");
+    return;
+  }
+
+  log.info("Processing subscription update", { 
+    subscriptionId, 
+    customerId,
+    cancelAtPeriodEnd: data.cancel_at_period_end 
+  });
+
+  try {
+    // First, check if subscription exists
+    const existing = await database.subscription.findUnique({
+      where: { stripeSubscriptionId: subscriptionId },
+    });
+
+    if (!existing) {
+      log.warn("Subscription record not found in database - may not have been created via checkout", { 
+        subscriptionId,
+        customerId 
+      });
+      return;
+    }
+
+    // Update cancelAtPeriodEnd flag in database
+    await database.subscription.update({
+      where: { stripeSubscriptionId: subscriptionId },
+      data: {
+        cancelAtPeriodEnd: data.cancel_at_period_end,
+      },
+    });
+
+    log.info("Subscription updated successfully", { subscriptionId, cancelAtPeriodEnd: data.cancel_at_period_end });
+
+    if (data.cancel_at_period_end) {
+      analytics.capture({
+        event: "Subscription Cancellation Scheduled",
+        distinctId: subscriptionId,
+      });
+    }
+  } catch (error) {
+    log.error("Error updating subscription", { subscriptionId, error: parseError(error) });
+  }
+};
+
 const handleSubscriptionDeleted = async (
   data: Stripe.Subscription
 ) => {
@@ -97,6 +149,10 @@ export const POST = async (request: Request): Promise<Response> => {
     switch (event.type) {
       case "checkout.session.completed": {
         await handleCheckoutSessionCompleted(event.data.object);
+        break;
+      }
+      case "customer.subscription.updated": {
+        await handleSubscriptionUpdated(event.data.object);
         break;
       }
       case "customer.subscription.deleted": {

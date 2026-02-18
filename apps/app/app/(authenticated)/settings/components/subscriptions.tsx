@@ -2,21 +2,44 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@repo/design-system/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/design-system/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@repo/design-system/components/ui/alert";
 import { loadStripe } from "@stripe/stripe-js";
 import { env } from "@/env";
-import { createEmbeddedCheckoutSession, validateCheckoutSession } from "../actions";
+import { 
+  createEmbeddedCheckoutSession, 
+  validateCheckoutSession,
+  getCurrentSubscription 
+} from "../actions";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ContactSalesDialog } from "./contact-sales-dialog";
+import { CancelSubscriptionDialog } from "./cancel-subscription-dialog";
+
+interface SubscriptionData {
+  id: string;
+  stripeSubscriptionId: string;
+  status: string;
+  currentPeriodEnd: number;
+  currentPeriodStart: number;
+  cancelAtPeriodEnd: boolean;
+  cancelAt: number | null;
+  createdAt: Date;
+  amount: number;
+  currency: string;
+  interval: string;
+}
 
 export function Subscriptions() {
   const [error, setError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const searchParams = useSearchParams();
   const status = searchParams.get("status") ?? undefined;
   const sessionId = searchParams.get("session_id") ?? undefined;
+  const shouldUpgrade = searchParams.get("upgrade") === "true";
   const [mode, setMode] = useState<"pricing" | "checkout" | "success">(
     status === "success" ? "success" : "pricing"
   );
@@ -26,6 +49,25 @@ export function Subscriptions() {
     currency?: string | null;
     status?: string | null;
   } | null>(null);
+
+  // Fetch current subscription on mount
+  useEffect(() => {
+    startTransition(async () => {
+      const result = await getCurrentSubscription();
+      if ("data" in result) {
+        console.log("Subscription data:", result.data);
+        setSubscription(result.data ?? null);
+      }
+      setIsLoading(false);
+    });
+  }, []);
+
+  // Auto-start checkout if upgrade param is present and user doesn't have subscription
+  useEffect(() => {
+    if (shouldUpgrade && !isLoading && !subscription) {
+      startProCheckout();
+    }
+  }, [shouldUpgrade, isLoading, subscription]);
 
   useEffect(() => {
     if (status === "success" && sessionId) {
@@ -37,7 +79,7 @@ export function Subscriptions() {
         }
         const { data } = result as { data: any };
         setSuccessInfo({
-          plan: undefined, // optional: map price/product later
+          plan: undefined,
           amount: data.amount_total,
           currency: data.currency,
           status: data.payment_status ?? data.status,
@@ -79,6 +121,17 @@ export function Subscriptions() {
     setClientSecret(data.clientSecret);
   }
 
+  const formatDate = (timestamp: number | undefined | null) => {
+    if (!timestamp) return "Unknown";
+    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const hasActiveSubscription = subscription && subscription.status === "active";
+
   return (
     <div className="mt-6 space-y-6">
       {error && (
@@ -89,34 +142,115 @@ export function Subscriptions() {
       )}
 
       {mode === "pricing" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-lg border p-6">
-            <h3 className="text-base font-semibold">Free</h3>
-            <p className="text-sm text-muted-foreground mt-2">All features. Upto 2 events per month.</p>
-            <div className="mt-4">
-              <Button disabled>Current Plan</Button>
+        <>
+          {hasActiveSubscription && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle>Current Subscription</CardTitle>
+                {!subscription.cancelAtPeriodEnd && (
+                  <CancelSubscriptionDialog 
+                    periodEndDate={subscription.currentPeriodEnd}
+                  />
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-muted-foreground">Plan</p>
+                      <p className="font-medium">Pro</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Amount</p>
+                      <p className="font-medium">${(subscription.amount / 100).toFixed(2)} {subscription.currency.toUpperCase()} / {subscription.interval}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Status</p>
+                      <p className="font-medium">
+                        {subscription.cancelAtPeriodEnd ? (
+                          <span className="text-orange-600">
+                            Cancels on {formatDate(subscription.currentPeriodEnd)}
+                          </span>
+                        ) : (
+                          <span className="text-green-600">Active</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-muted-foreground">Started</p>
+                      <p className="font-medium">
+                        {subscription.createdAt.toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                    </div>
+                    {!subscription.cancelAtPeriodEnd && (
+                      <div>
+                        <p className="text-muted-foreground">Next billing date</p>
+                        <p className="font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="rounded-lg border p-6">
+              <h3 className="text-base font-semibold">Free</h3>
+              <p className="text-2xl font-bold mt-1">$0<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+              <p className="text-sm text-muted-foreground mt-2">All features. Upto 2 events per month.</p>
+              <div className="mt-4">
+                {hasActiveSubscription ? (
+                  subscription.cancelAtPeriodEnd ? (
+                    <Button disabled>Switching on {formatDate(subscription.currentPeriodEnd)}</Button>
+                  ) : (
+                    <CancelSubscriptionDialog 
+                      periodEndDate={subscription.currentPeriodEnd}
+                      variant="secondary"
+                      buttonText="Downgrade to Free"
+                    />
+                  )
+                ) : (
+                  <Button disabled>Current Plan</Button>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-primary p-6 relative">
+              {!hasActiveSubscription && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+                  Recommended
+                </div>
+              )}
+              <h3 className="text-base font-semibold">Pro</h3>
+              <p className="text-2xl font-bold mt-1">$29<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+              <p className="text-sm text-muted-foreground mt-2">All features. Unlimited events per month.</p>
+              <div className="mt-4">
+                {hasActiveSubscription ? (
+                  <Button disabled>Current Plan</Button>
+                ) : (
+                  <Button onClick={startProCheckout} disabled={isPending || isLoading}>
+                    {isPending ? "Starting Checkout..." : "Upgrade to Pro"}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-6">
+              <h3 className="text-base font-semibold">Pro +</h3>
+              <p className="text-sm text-muted-foreground mt-2">Custom features tailored to fit your workflow.</p>
+              <div className="mt-4">
+                <ContactSalesDialog />
+              </div>
             </div>
           </div>
-          <div className="rounded-lg border border-primary p-6 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-              Recommended
-            </div>
-            <h3 className="text-base font-semibold">Pro</h3>
-            <p className="text-sm text-muted-foreground mt-2">All features. Unlimited events per month.</p>
-            <div className="mt-4">
-              <Button onClick={startProCheckout} disabled={isPending}>
-                {isPending ? "Starting Checkout..." : "Upgrade to Pro"}
-              </Button>
-            </div>
-          </div>
-          <div className="rounded-lg border p-6">
-            <h3 className="text-base font-semibold">Pro +</h3>
-            <p className="text-sm text-muted-foreground mt-2">Custom features tailored to fit your workflow.</p>
-            <div className="mt-4">
-              <ContactSalesDialog />
-            </div>
-          </div>
-        </div>
+        </>
       )}
 
       {mode === "checkout" && (
@@ -144,3 +278,4 @@ export function Subscriptions() {
     </div>
   );
 }
+

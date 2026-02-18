@@ -4,7 +4,12 @@ import { Header } from "../components/header";
 import { getFinanceSettings, getServiceCategories, getOrganizationSettings, getPaymentModes, getTeamMembers } from "./actions";
 import { SettingsShell } from "./components/settings-shell";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const params = await searchParams;
   const [financeSettings, serviceCategories, organizationSettings, paymentModes, teamMembers] = await Promise.all([
     getFinanceSettings(),
     getServiceCategories(),
@@ -14,7 +19,7 @@ export default async function SettingsPage() {
   ]);
 
   const currencies = formatCurrencyList();
-  const activeTab = "organization";
+  const activeTab = params.tab || "organization";
 
   return (
     <>

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getTenantContext, getUserContext } from "../lib/auth-helpers";
 import { auth, clerkClient } from "@repo/auth/server";
-import { stripe } from "@repo/payments";
+import { stripe, type Stripe } from "@repo/payments";
 import { resend } from "@repo/email";
 import { keys as emailKeys } from "@repo/email/keys";
 import { env } from "@/env";
@@ -509,6 +509,78 @@ export async function validateCheckoutSession(sessionId: string) {
   } catch (error) {
     console.error("Failed to validate checkout session:", error);
     return { error: "Failed to validate checkout session" };
+  }
+}
+
+export async function getCurrentSubscription() {
+  try {
+    const { internalUserId } = await getUserContext();
+
+    // Check if subscription exists in DB
+    const subscription = await database.subscription.findUnique({
+      where: { userId: internalUserId },
+    });
+
+    if (!subscription) {
+      return { data: null };
+    }
+
+    // Fetch full details from Stripe
+    const stripeSubscription: any = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+    
+    // Get period dates from first subscription item
+    const firstItem = stripeSubscription.items?.data?.[0];
+    const price = firstItem?.price;
+
+    return {
+      data: {
+        id: subscription.id,
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        status: stripeSubscription.status,
+        currentPeriodEnd: firstItem?.current_period_end || 0,
+        currentPeriodStart: firstItem?.current_period_start || 0,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        cancelAt: stripeSubscription.cancel_at || null,
+        createdAt: subscription.createdAt,
+        amount: price?.unit_amount || 0,
+        currency: stripeSubscription.currency || "usd",
+        interval: price?.recurring?.interval || "month",
+      },
+    };
+  } catch (error) {
+    console.error("Failed to get current subscription:", error);
+    return { error: "Failed to get current subscription" };
+  }
+}
+
+export async function cancelSubscription() {
+  try {
+    const { internalUserId } = await getUserContext();
+
+    // Get subscription from DB
+    const subscription = await database.subscription.findUnique({
+      where: { userId: internalUserId },
+    });
+
+    if (!subscription) {
+      return { error: "No active subscription found" };
+    }
+
+    // Check if already cancelled
+    if (subscription.cancelAtPeriodEnd) {
+      return { error: "Subscription is already scheduled for cancellation" };
+    }
+
+    // Cancel subscription at period end via Stripe API
+    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    // Note: DB will be updated via webhook (customer.subscription.updated)
+    return { data: { success: true } };
+  } catch (error) {
+    console.error("Failed to cancel subscription:", error);
+    return { error: "Failed to cancel subscription" };
   }
 }
 

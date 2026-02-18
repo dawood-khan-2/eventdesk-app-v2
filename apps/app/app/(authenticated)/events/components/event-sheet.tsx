@@ -35,6 +35,7 @@ import { useTransition, useEffect, useState } from "react";
 import { cn } from "@repo/design-system/lib/utils";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { UpgradeDialog } from "./upgrade-dialog";
 
 interface EventSheetProps {
   open: boolean;
@@ -63,6 +64,10 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
   const [maxGuests, setMaxGuests] = useState<string>("");
   const [registrationEndDate, setRegistrationEndDate] = useState<Date | undefined>();
   const [registrationEndTime, setRegistrationEndTime] = useState("");
+  
+  // Upgrade dialog state
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState("");
   
   // Dropdowns state
   const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
@@ -265,7 +270,13 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         : await createEvent(data);
 
       if (result.error) {
-        toast.error(result.error);
+        // Check if it's a subscription limit error
+        if (result.error.includes("Upgrade to Pro")) {
+          setUpgradeMessage(result.error);
+          setUpgradeDialogOpen(true);
+        } else {
+          toast.error(result.error);
+        }
       } else {
         toast.success(event ? "Event updated successfully" : "Event created successfully");
         onSuccess();
@@ -698,6 +709,12 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
           </form>
         </SheetContent>
       </Sheet>
+      
+      <UpgradeDialog 
+        open={upgradeDialogOpen}
+        onOpenChange={setUpgradeDialogOpen}
+        message={upgradeMessage}
+      />
     </>
   );
 }

@@ -534,6 +534,7 @@ model Subscription {
   userId                    String   @unique
   stripeCustomerId          String
   stripeSubscriptionId      String   @unique
+  cancelAtPeriodEnd         Boolean  @default(false)
 
   // Audit Fields
   createdAt                 DateTime @default(now())
