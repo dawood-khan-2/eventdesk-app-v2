@@ -33,8 +33,11 @@ export const env = createEnv({
   server: {
     SALES_EMAIL: z.string().email(),
   },
-  client: {},
+  client: {
+    NEXT_PUBLIC_STRIPE_PRO_PRICE_ID: z.string().startsWith("price_"),
+  },
   runtimeEnv: {
     SALES_EMAIL: process.env.SALES_EMAIL,
+    NEXT_PUBLIC_STRIPE_PRO_PRICE_ID: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
   },
 });

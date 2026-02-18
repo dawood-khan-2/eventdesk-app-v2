@@ -109,7 +109,7 @@ export function Subscriptions() {
     setError(null);
     setMode("checkout");
     const res = await createEmbeddedCheckoutSession({
-      priceId: "price_1SzFDjF4nDSIqYaCBrx8RZjD",
+      priceId: env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
       quantity: 1,
     });
     if ("error" in res) {
