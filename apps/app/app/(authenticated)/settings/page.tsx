@@ -4,6 +4,8 @@ import { Header } from "../components/header";
 import { getFinanceSettings, getServiceCategories, getOrganizationSettings, getPaymentModes, getTeamMembers } from "./actions";
 import { SettingsShell } from "./components/settings-shell";
 
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage({
   searchParams,
 }: {
