@@ -760,7 +760,8 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         open={upgradeDialogOpen}
         onOpenChange={setUpgradeDialogOpen}
         message={upgradeMessage}
-
+      />
+      
       {/* Client Creation Dialog */}
       <CreateClientDialog
         open={createClientDialogOpen}
