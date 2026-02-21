@@ -27,11 +27,14 @@ import { createClient } from "../../clients/actions";
 
 const clientFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
-  email: z.string().optional(),
-  phone: z
-    .string()
-    .regex(/^[0-9+]*$/, "Phone must contain only numbers and + sign")
-    .optional(),
+  email: z.union([
+    z.string().email("Invalid email address"),
+    z.literal("")
+  ]).optional(),
+  phone: z.union([
+    z.string().regex(/^(\+[0-9]+|[0-9]+)$/, "Phone must be either numbers only or start with + followed by numbers"),
+    z.literal("")
+  ]).optional(),
   company: z.string().optional(),
 });
 

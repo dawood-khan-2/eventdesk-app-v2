@@ -18,6 +18,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@repo/design-system/components/ui/command";
 import {
   Select,
@@ -26,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/design-system/components/ui/select";
-import { CalendarIcon, Check, ChevronsUpDown, Pencil, ArrowRight } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Pencil, ArrowRight, Plus } from "lucide-react";
 import { createEvent, updateEvent, getEstimatesForLeadOrClient } from "../actions";
 import { getClients } from "../../clients/actions";
 import { getLeads } from "../../leads/actions";
@@ -36,6 +37,7 @@ import { cn } from "@repo/design-system/lib/utils";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { UpgradeDialog } from "./upgrade-dialog";
+import { CreateClientDialog } from "../../estimates/components/create-client-dialog";
 
 interface EventSheetProps {
   open: boolean;
@@ -76,6 +78,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
   
   const [leadClientOpen, setLeadClientOpen] = useState(false);
   const [estimateOpen, setEstimateOpen] = useState(false);
+  const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
 
   const isViewing = mode === "view";
   const isEditing = mode === "edit";
@@ -305,6 +308,17 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
 
   const selectedEstimate = estimates.find(e => e.id === estimateId);
 
+  const handleClientCreated = (clientId: string, clientName: string) => {
+    // Add to local state
+    setClients(prev => [...prev, { id: clientId, name: clientName, email: null }]);
+
+    // Auto-select the new client
+    setLeadOrClientId(clientId);
+    setLeadOrClientType("client");
+
+    // Toast already shown by dialog
+  };
+
   return (
     <>
       <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -359,8 +373,40 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                   <PopoverContent className="w-full p-0" align="start">
                     <Command>
                       <CommandInput placeholder="Search leads and clients..." />
-                      <CommandList>
-                        <CommandEmpty>No lead or client found.</CommandEmpty>
+                      <CommandList className="max-h-[300px] overflow-y-auto">
+                        <CommandEmpty>
+                          <div className="py-6 text-center">
+                            <p className="mb-4 text-sm text-muted-foreground">No client found.</p>
+                            <div className="px-4">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => {
+                                  setLeadClientOpen(false);
+                                  setCreateClientDialogOpen(true);
+                                }}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create New Client
+                              </Button>
+                            </div>
+                          </div>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            onSelect={() => {
+                              setLeadClientOpen(false);
+                              setCreateClientDialogOpen(true);
+                            }}
+                            className="text-primary"
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create New Client
+                          </CommandItem>
+                        </CommandGroup>
+                        <CommandSeparator />
                         {leads.length > 0 && (
                           <CommandGroup heading="Leads">
                             {leads.map((lead) => (
@@ -714,6 +760,12 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         open={upgradeDialogOpen}
         onOpenChange={setUpgradeDialogOpen}
         message={upgradeMessage}
+
+      {/* Client Creation Dialog */}
+      <CreateClientDialog
+        open={createClientDialogOpen}
+        onOpenChange={setCreateClientDialogOpen}
+        onSuccess={handleClientCreated}
       />
     </>
   );
