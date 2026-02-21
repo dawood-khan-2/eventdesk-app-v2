@@ -9,6 +9,7 @@ import { FeedbackRequestTemplate } from "@repo/email/templates/feedback-request"
 import { RegistrationLinkTemplate } from "@repo/email/templates/registration-link";
 import { env } from "@/env";
 import { getTenantContext, getUserContext } from "../lib/auth-helpers";
+import { checkEventCreationLimit } from "../lib/subscription-helpers";
 
 /**
  * Event filter types
@@ -121,6 +122,13 @@ export async function createEvent(data: z.infer<typeof createEventSchema>) {
     const validatedData = createEventSchema.parse(data);
 
     const { internalOrgId } = await getTenantContext();
+    const { internalUserId } = await getUserContext();
+
+    // Check event creation limits for Free plan users
+    const limitCheck = await checkEventCreationLimit(internalUserId, internalOrgId);
+    if (!limitCheck.allowed) {
+      return { error: limitCheck.error };
+    }
 
     // Execute entire flow in a single transaction with automatic rollback on failure
     // The prisma object here is already a TransactionClient

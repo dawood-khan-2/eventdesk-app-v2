@@ -12,6 +12,12 @@ const securityHeaders = env.FLAGS_SECRET
   ? securityMiddleware(noseconeOptionsWithToolbar)
   : securityMiddleware(noseconeOptions);
 
+// Relaxed variant without COEP for Stripe Embedded Checkout (requires cookies)
+const relaxedSecurityHeaders = securityMiddleware({
+  ...noseconeOptions,
+  crossOriginEmbedderPolicy: false,
+});
+
 // Clerk middleware wraps other middleware in its callback
 // For apps using Clerk, compose middleware inside authMiddleware callback
 // For apps without Clerk, use createNEMO for composition (see apps/web)
@@ -31,6 +37,14 @@ export default authMiddleware(async (auth, request) => {
   // Skip strict security headers for public registration routes (allows hCaptcha iframe)
   if (pathname.startsWith("/register/")) {
     return NextResponse.next();
+  }
+
+  // Relax COEP on Subscription settings to allow Stripe.js iframes and cookies
+  if (pathname.startsWith("/settings")) {
+    const tab = request.nextUrl.searchParams.get("tab");
+    if (tab === "subscription") {
+      return relaxedSecurityHeaders();
+    }
   }
 
   const session = await auth(); // call the function to get auth data
