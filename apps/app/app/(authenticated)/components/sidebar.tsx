@@ -38,6 +38,7 @@ import {
   FileTextIcon,
   StoreIcon,
   ReceiptIcon,
+  LifeBuoyIcon,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -117,6 +118,11 @@ const data: SidebarData = {
       url: "/settings",
       icon: Settings2Icon,
     },
+    {
+      title: "Support",
+      url: "https://event-desk.tawk.help/",
+      icon: LifeBuoyIcon,
+    },
   ],
 };
 
@@ -178,6 +184,8 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                 // Type assertion after checking it's not a separator
                 if (!("title" in item)) return null;
                 
+                const isExternal = item.url.startsWith("http");
+                
                 return (
                   <Collapsible
                     asChild
@@ -186,10 +194,22 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                   >
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild tooltip={item.title}>
-                        <Link href={item.url} onClick={handleLinkClick}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
+                        {isExternal ? (
+                          <a 
+                            href={item.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={handleLinkClick}
+                          >
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </a>
+                        ) : (
+                          <Link href={item.url} onClick={handleLinkClick}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </Link>
+                        )}
                       </SidebarMenuButton>
                       {item.items?.length ? (
                         <>
