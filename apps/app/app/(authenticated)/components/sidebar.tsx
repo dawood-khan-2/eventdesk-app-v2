@@ -22,6 +22,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarSeparator,
   useSidebar,
 } from "@repo/design-system/components/ui/sidebar";
 import { cn } from "@repo/design-system/lib/utils";
@@ -56,6 +57,8 @@ type NavItem = {
     title: string;
     url: string;
   }[];
+} | {
+  type: "separator";
 };
 
 type SidebarData = {
@@ -70,25 +73,17 @@ const data: SidebarData = {
       icon: LayoutDashboardIcon,
       isActive: true,
     },
+    { type: "separator" },
     {
       title: "Events",
       url: "/events",
       icon: CalendarDaysIcon,
     },
+    { type: "separator" },
     {
       title: "Estimates",
       url: "/estimates",
       icon: CalculatorIcon,
-    },
-    {
-      title: "Clients",
-      url: "/clients",
-      icon: ContactIcon,
-    },
-    {
-      title: "Leads",
-      url: "/leads",
-      icon: MagnetIcon,
     },
     {
       title: "Invoices",
@@ -100,11 +95,23 @@ const data: SidebarData = {
       url: "/bills",
       icon: ReceiptIcon,
     },
+    { type: "separator" },
+    {
+      title: "Leads",
+      url: "/leads",
+      icon: MagnetIcon,
+    },
+    {
+      title: "Clients",
+      url: "/clients",
+      icon: ContactIcon,
+    },
     {
       title: "Vendors",
       url: "/vendors",
       icon: StoreIcon,
     },
+    { type: "separator" },
     {
       title: "Settings",
       url: "/settings",
@@ -134,7 +141,10 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
 
   // Filter navigation items based on role
   const filteredNavItems = userRole === "org:member" 
-    ? data.navMain.filter(item => item.title === "Events")
+    ? data.navMain.filter(item => 
+        ("type" in item && item.type === "separator") || 
+        ("title" in item && item.title === "Events")
+      )
     : data.navMain;
 
   return (
@@ -160,45 +170,54 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
         <SidebarContent>
           <SidebarGroup>
             <SidebarMenu>
-              {filteredNavItems.map((item) => (
-                <Collapsible
-                  asChild
-                  defaultOpen={item.isActive}
-                  key={item.title}
-                >
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip={item.title}>
-                      <Link href={item.url} onClick={handleLinkClick}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                    {item.items?.length ? (
-                      <>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuAction className="data-[state=open]:rotate-90">
-                            <ChevronRightIcon />
-                            <span className="sr-only">Toggle</span>
-                          </SidebarMenuAction>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {item.items?.map((subItem) => (
-                              <SidebarMenuSubItem key={subItem.title}>
-                                <SidebarMenuSubButton asChild>
-                                  <Link href={subItem.url} onClick={handleLinkClick}>
-                                    <span>{subItem.title}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </>
-                    ) : null}
-                  </SidebarMenuItem>
-                </Collapsible>
-              ))}
+              {filteredNavItems.map((item, index) => {
+                if ("type" in item && item.type === "separator") {
+                  return <SidebarSeparator key={`separator-${index}`} />;
+                }
+                
+                // Type assertion after checking it's not a separator
+                if (!("title" in item)) return null;
+                
+                return (
+                  <Collapsible
+                    asChild
+                    defaultOpen={item.isActive}
+                    key={item.title}
+                  >
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <Link href={item.url} onClick={handleLinkClick}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                      {item.items?.length ? (
+                        <>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuAction className="data-[state=open]:rotate-90">
+                              <ChevronRightIcon />
+                              <span className="sr-only">Toggle</span>
+                            </SidebarMenuAction>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.items?.map((subItem) => (
+                                <SidebarMenuSubItem key={subItem.title}>
+                                  <SidebarMenuSubButton asChild>
+                                    <Link href={subItem.url} onClick={handleLinkClick}>
+                                      <span>{subItem.title}</span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </>
+                      ) : null}
+                    </SidebarMenuItem>
+                  </Collapsible>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
