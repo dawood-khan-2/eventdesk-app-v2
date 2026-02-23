@@ -2,7 +2,6 @@ import { auth, currentUser } from "@repo/auth/server";
 import { SidebarProvider } from "@repo/design-system/components/ui/sidebar";
 import { showBetaFeature } from "@repo/feature-flags";
 import { secure } from "@repo/security";
-import Script from "next/script";
 import type { ReactNode } from "react";
 import { env } from "@/env";
 import { NotificationsProvider } from "./components/notifications-provider";
@@ -40,8 +39,6 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
         </SidebarProvider>
       </NotificationsProvider>
       
-      {/* Tawk.to Chat Widget */}
-      <Script src="/scripts/tawk.js" strategy="afterInteractive" />
     </>
   );
 };
