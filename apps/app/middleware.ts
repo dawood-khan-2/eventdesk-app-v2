@@ -22,15 +22,6 @@ const relaxedSecurityHeaders = securityMiddleware({
 // For apps using Clerk, compose middleware inside authMiddleware callback
 // For apps without Clerk, use createNEMO for composition (see apps/web)
 export default authMiddleware(async (auth, request) => {
-  // Log header size for debugging REQUEST_HEADER_TOO_LARGE errors
-  const headersArray: string[] = [];
-  request.headers.forEach((value, key) => {
-    headersArray.push(`${key}: ${value}`);
-  });
-  const headersString = headersArray.join('\r\n');
-  const headerSizeBytes = Buffer.byteLength(headersString, 'utf8');
-  console.log(`[Header Debug] ${request.url} - Total header size: ${headerSizeBytes} bytes (${(headerSizeBytes / 1024).toFixed(2)} KB)`);
-  
   const pathname = request.nextUrl.pathname;
 
   // Allow static, ingest, and onboarding routes
