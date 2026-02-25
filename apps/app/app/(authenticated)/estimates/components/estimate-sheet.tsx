@@ -11,6 +11,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@repo/design-system/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/design-system/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/design-system/components/ui/card";
 import {
   Select,
@@ -85,6 +95,8 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
   const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
   const [clients, setClients] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
   const currency = getCurrencyConfig(currencyCode);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [formData, setFormData] = useState({
     title: estimate?.title || "",
     leadOrClientId: estimate?.leadId || estimate?.clientId || "",
@@ -109,6 +121,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
   // Reset form when sheet opens
   useEffect(() => {
     if (open) {
+      setIsDirty(false);
       if (mode === "create") {
         setFormData({
           title: "",
@@ -175,7 +188,30 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
     
     fetchData();
   }, []);
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      // Check if form is dirty and in create/edit mode
+      if (isDirty && (mode === "create" || mode === "edit")) {
+        setShowCancelConfirm(true);
+        return; // Don't close yet
+      }
+    }
+    onOpenChange(newOpen);
+  };
 
+  const handleConfirmCancel = () => {
+    setShowCancelConfirm(false);
+    setIsDirty(false);
+    onOpenChange(false);
+  };
+
+  const handleCancelClick = () => {
+    if (isDirty && (mode === "create" || mode === "edit")) {
+      setShowCancelConfirm(true);
+    } else {
+      onOpenChange(false);
+    }
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -352,8 +388,17 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
 
   return (
     <>
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent 
+        className="w-full sm:max-w-4xl overflow-y-auto"
+        onInteractOutside={(e) => {
+          // Prevent closing when clicking outside if form is dirty
+          if (isDirty && (mode === "create" || mode === "edit")) {
+            e.preventDefault();
+            setShowCancelConfirm(true);
+          }
+        }}
+      >
         <SheetHeader>
           <SheetTitle>
             {mode === "create" ? "Create New Estimate" : 
@@ -558,7 +603,11 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
               </SheetFooter>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6 px-6">
+            <form 
+              onSubmit={handleSubmit} 
+              className="space-y-6 px-6"
+              onChange={() => !isDirty && setIsDirty(true)}
+            >
               {/* Estimate Title */}
               <div>
                 <label className="text-sm font-medium">Estimate Title *</label>
@@ -949,7 +998,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
               </div>
 
               <SheetFooter>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <Button type="button" variant="outline" onClick={handleCancelClick}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
@@ -961,6 +1010,26 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* Confirmation Dialog for Unsaved Changes */}
+    <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have unsaved changes. Are you sure you want to close? All changes will be lost.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleConfirmCancel}>
+            Discard Changes
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={() => setShowCancelConfirm(false)}>
+            Continue Editing
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* Lead Creation Dialog */}
     <CreateLeadDialog

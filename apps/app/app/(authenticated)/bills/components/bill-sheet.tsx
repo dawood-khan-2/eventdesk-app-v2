@@ -10,6 +10,16 @@ import {
   SheetFooter,
 } from "@repo/design-system/components/ui/sheet";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/design-system/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -130,6 +140,7 @@ export function BillSheet({
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState(initialMode);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredServiceCategories, setFilteredServiceCategories] = useState<ServiceCategory[]>(
     []
@@ -220,6 +231,11 @@ export function BillSheet({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
+      // Check if form is dirty and in create/edit mode
+      if (form.formState.isDirty && (isCreating || isEditing)) {
+        setShowCancelConfirm(true);
+        return; // Don't close yet
+      }
       form.reset();
       setMode(initialMode);
       setFilteredServiceCategories([]);
@@ -288,6 +304,30 @@ export function BillSheet({
 
   const handleCancelEdit = () => {
     if (bill) {
+      if (form.formState.isDirty) {
+        setShowCancelConfirm(true);
+      } else {
+        handleOpenChange(false);
+      }
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelConfirm(false);
+    form.reset();
+    setFilteredServiceCategories([]);
+    setUploadedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    onOpenChange(false);
+    setMode(initialMode);
+  };
+
+  const handleCancelClick = () => {
+    if (form.formState.isDirty && (isCreating || isEditing)) {
+      setShowCancelConfirm(true);
+    } else {
       handleOpenChange(false);
     }
   };
@@ -359,7 +399,16 @@ export function BillSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent className="overflow-y-auto sm:max-w-xl">
+        <SheetContent 
+          className="overflow-y-auto sm:max-w-xl"
+          onInteractOutside={(e) => {
+            // Prevent closing when clicking outside if form is dirty
+            if (form.formState.isDirty && (isCreating || isEditing)) {
+              e.preventDefault();
+              setShowCancelConfirm(true);
+            }
+          }}
+        >
           <SheetHeader>
             <SheetTitle>{getTitle()}</SheetTitle>
             <SheetDescription>{getDescription()}</SheetDescription>
@@ -715,7 +764,7 @@ export function BillSheet({
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={isEditing ? handleCancelEdit : () => handleOpenChange(false)}
+                      onClick={handleCancelClick}
                       className="w-full sm:w-auto"
                     >
                       Cancel
@@ -727,6 +776,26 @@ export function BillSheet({
           </Form>
         </SheetContent>
       </Sheet>
+
+      {/* Confirmation Dialog for Unsaved Changes */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to close? All changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleConfirmCancel}>
+              Discard Changes
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => setShowCancelConfirm(false)}>
+              Continue Editing
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {bill && (
         <DeleteBillDialog

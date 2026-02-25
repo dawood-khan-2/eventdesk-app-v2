@@ -2,6 +2,16 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from "@repo/design-system/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/design-system/components/ui/alert-dialog";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Label } from "@repo/design-system/components/ui/label";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
@@ -70,6 +80,10 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
   // Upgrade dialog state
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [upgradeMessage, setUpgradeMessage] = useState("");
+  
+  // Form dirty state and confirmation dialog
+  const [isDirty, setIsDirty] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   
   // Dropdowns state
   const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
@@ -144,6 +158,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
   // Reset form when event prop or mode changes
   useEffect(() => {
     if (open) {
+      setIsDirty(false); // Reset dirty state when opening
       if (event) {
         setName(event.name || "");
         setLeadOrClientId(event.clientId || "");
@@ -192,6 +207,11 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
+      // Check if form is dirty and in create/edit mode
+      if (isDirty && (isCreating || isEditing)) {
+        setShowCancelConfirm(true);
+        return; // Don't close yet
+      }
       setMode(initialMode);
     }
     onOpenChange(newOpen);
@@ -203,7 +223,30 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
 
   const handleCancelEdit = () => {
     if (event) {
-      handleOpenChange(false);
+      if (isDirty) {
+        setShowCancelConfirm(true);
+      } else {
+        handleOpenChange(false);
+      }
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelConfirm(false);
+    setIsDirty(false);
+    onOpenChange(false);
+    setMode(initialMode);
+  };
+
+  const handleCancelClick = () => {
+    if (isDirty && (isCreating || isEditing)) {
+      setShowCancelConfirm(true);
+    } else {
+      if (isEditing) {
+        handleOpenChange(false);
+      } else {
+        handleOpenChange(false);
+      }
     }
   };
 
@@ -281,6 +324,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
           toast.error(result.error);
         }
       } else {
+        setIsDirty(false); // Reset dirty state after successful save
         toast.success(event ? "Event updated successfully" : "Event created successfully");
         onSuccess();
         if (event) {
@@ -322,13 +366,30 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
   return (
     <>
       <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent className="overflow-y-auto sm:max-w-xl">
+        <SheetContent 
+          className="overflow-y-auto sm:max-w-xl"
+          onInteractOutside={(e) => {
+            // Prevent closing when clicking outside if form is dirty
+            if (isDirty && (isCreating || isEditing)) {
+              e.preventDefault();
+              setShowCancelConfirm(true);
+            }
+          }}
+        >
           <SheetHeader>
             <SheetTitle>{getTitle()}</SheetTitle>
             <SheetDescription>{getDescription()}</SheetDescription>
           </SheetHeader>
 
-          <form onSubmit={onSubmit} className="space-y-4 px-6 py-6">
+          <form 
+            onSubmit={onSubmit} 
+            className="space-y-4 px-6 py-6"
+            onChange={() => {
+              if (!isDirty && (isCreating || isEditing)) {
+                setIsDirty(true);
+              }
+            }}
+          >
             {/* Lead/Client Selection */}
             <div className="space-y-2">
               <Label>Lead / Client *</Label>
@@ -744,7 +805,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={isEditing ? handleCancelEdit : () => handleOpenChange(false)}
+                    onClick={handleCancelClick}
                     className="w-full sm:w-auto"
                   >
                     Cancel
@@ -755,6 +816,26 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
           </form>
         </SheetContent>
       </Sheet>
+      
+      {/* Confirmation Dialog for Unsaved Changes */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to close? All changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleConfirmCancel}>
+              Discard Changes
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => setShowCancelConfirm(false)}>
+              Continue Editing
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       <UpgradeDialog 
         open={upgradeDialogOpen}

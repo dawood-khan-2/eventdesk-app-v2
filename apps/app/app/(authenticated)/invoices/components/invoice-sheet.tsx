@@ -12,6 +12,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@repo/design-system/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/design-system/components/ui/alert-dialog";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/design-system/components/ui/card";
 import {
   Select,
@@ -126,6 +137,10 @@ export function InvoiceSheet({
   const [events, setEvents] = useState<Array<{ id: string; name: string; clientId: string }>>([]);
   const currency = getCurrencyConfig(currencyCode);
 
+  // Form dirty state and confirmation dialog
+  const [isDirty, setIsDirty] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
   const [formData, setFormData] = useState({
     number: "",
     clientId: "",
@@ -155,6 +170,7 @@ export function InvoiceSheet({
   // Reset form when sheet opens
   useEffect(() => {
     if (open && mode === "create") {
+      setIsDirty(false);
       setFormData({
         number: "",
         clientId: eventData?.clientId || "",
@@ -180,6 +196,7 @@ export function InvoiceSheet({
           },
         ],
       });
+      setIsDirty(false);
     }
   }, [open, mode, eventData]);
 
@@ -209,6 +226,31 @@ export function InvoiceSheet({
       }
     }
   }, [formData.clientId, clients]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      // Check if form is dirty and in create mode
+      if (isDirty && mode === "create") {
+        setShowCancelConfirm(true);
+        return; // Don't close yet
+      }
+    }
+    onOpenChange(newOpen);
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelConfirm(false);
+    setIsDirty(false);
+    onOpenChange(false);
+  };
+
+  const handleCancelClick = () => {
+    if (isDirty && mode === "create") {
+      setShowCancelConfirm(true);
+    } else {
+      handleOpenChange(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,6 +309,7 @@ export function InvoiceSheet({
         return;
       }
 
+      setIsDirty(false); // Reset dirty state after successful save
       toast.success("Invoice created successfully!");
       onOpenChange(false);
       onSuccess?.();
@@ -348,8 +391,17 @@ export function InvoiceSheet({
   const filteredEvents = formData.clientId ? events.filter((e) => e.clientId === formData.clientId) : [];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
+    <>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent 
+        className="w-full sm:max-w-4xl overflow-y-auto"
+        onInteractOutside={(e) => {
+          if (isDirty && mode === "create") {
+            e.preventDefault();
+            setShowCancelConfirm(true);
+          }
+        }}
+      >
         <SheetHeader>
           <SheetTitle>{mode === "create" ? "Create New Invoice" : "View Invoice"}</SheetTitle>
           <SheetDescription>
@@ -608,7 +660,11 @@ export function InvoiceSheet({
               </SheetFooter>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6 px-6">
+            <form 
+              onSubmit={handleSubmit} 
+              className="space-y-6 px-6"
+              onChange={() => setIsDirty(true)}
+            >
               {/* Invoice Number */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -974,7 +1030,7 @@ export function InvoiceSheet({
               </div>
 
               <SheetFooter>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <Button type="button" variant="outline" onClick={handleCancelClick}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
@@ -986,5 +1042,26 @@ export function InvoiceSheet({
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* Confirmation Dialog for Unsaved Changes */}
+    <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have unsaved changes. Are you sure you want to close? All changes will be lost.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleConfirmCancel}>
+            Discard Changes
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={() => setShowCancelConfirm(false)}>
+            Continue Editing
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

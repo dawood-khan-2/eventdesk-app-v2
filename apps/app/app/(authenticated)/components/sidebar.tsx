@@ -41,6 +41,7 @@ import {
   LifeBuoyIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { getUserRole } from "../lib/get-user-role";
@@ -128,6 +129,7 @@ const data: SidebarData = {
 
 export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
   const sidebar = useSidebar();
+  const pathname = usePathname();
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -185,15 +187,19 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                 if (!("title" in item)) return null;
                 
                 const isExternal = item.url.startsWith("http");
+                const isActive = !isExternal && (
+                  pathname === item.url || 
+                  (item.url !== "/" && pathname.startsWith(item.url))
+                );
                 
                 return (
                   <Collapsible
                     asChild
-                    defaultOpen={item.isActive}
+                    defaultOpen={isActive}
                     key={item.title}
                   >
                     <SidebarMenuItem>
-                      <SidebarMenuButton asChild tooltip={item.title}>
+                      <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
                         {isExternal ? (
                           <a 
                             href={item.url} 

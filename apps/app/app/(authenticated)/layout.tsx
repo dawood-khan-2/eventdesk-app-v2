@@ -13,7 +13,7 @@ type AppLayoutProperties = {
 
 const AppLayout = async ({ children }: AppLayoutProperties) => {
   if (env.ARCJET_KEY) {
-    await secure(["CATEGORY:PREVIEW", "BETTERUPTIME_MONITOR"]);
+    await secure(["CATEGORY:PREVIEW", "CATEGORY:MONITOR"]);
   }
 
   const user = await currentUser();
