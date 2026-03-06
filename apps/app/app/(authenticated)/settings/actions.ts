@@ -553,6 +553,31 @@ export async function getCurrentSubscription() {
   }
 }
 
+export async function getProPlanPrice() {
+  try {
+    const priceId = env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID;
+    const price = await stripe.prices.retrieve(priceId);
+
+    console.log("Fetched Stripe price:", {
+      id: price.id,
+      unit_amount: price.unit_amount,
+      currency: price.currency,
+      interval: price.recurring?.interval,
+    });
+
+    return {
+      data: {
+        amount: price.unit_amount ? price.unit_amount / 100 : 0,
+        currency: price.currency || "usd",
+        interval: (price.recurring?.interval || "month") as string,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to fetch price details:", error);
+    return { error: "Failed to fetch price details" };
+  }
+}
+
 export async function cancelSubscription() {
   try {
     const { internalUserId } = await getUserContext();

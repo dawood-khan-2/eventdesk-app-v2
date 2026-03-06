@@ -9,7 +9,8 @@ import { env } from "@/env";
 import { 
   createEmbeddedCheckoutSession, 
   validateCheckoutSession,
-  getCurrentSubscription 
+  getCurrentSubscription,
+  getProPlanPrice
 } from "../actions";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ContactSalesDialog } from "./contact-sales-dialog";
@@ -35,6 +36,7 @@ export function Subscriptions() {
   const [isPending, startTransition] = useTransition();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [proPlanPrice, setProPlanPrice] = useState<{ amount: number; currency: string; interval: string } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const searchParams = useSearchParams();
   const status = searchParams.get("status") ?? undefined;
@@ -50,14 +52,26 @@ export function Subscriptions() {
     status?: string | null;
   } | null>(null);
 
-  // Fetch current subscription on mount
+  // Fetch current subscription and pro plan price on mount
   useEffect(() => {
     startTransition(async () => {
-      const result = await getCurrentSubscription();
-      if ("data" in result) {
-        console.log("Subscription data:", result.data);
-        setSubscription(result.data ?? null);
+      const [subscriptionResult, priceResult] = await Promise.all([
+        getCurrentSubscription(),
+        getProPlanPrice(),
+      ]);
+      
+      if ("data" in subscriptionResult) {
+        console.log("Subscription data:", subscriptionResult.data);
+        setSubscription(subscriptionResult.data ?? null);
       }
+      
+      if ("data" in priceResult && priceResult.data) {
+        console.log("Price data from Stripe:", priceResult.data);
+        setProPlanPrice(priceResult.data);
+      } else {
+        console.error("Failed to fetch price:", priceResult);
+      }
+      
       setIsLoading(false);
     });
   }, []);
@@ -229,7 +243,10 @@ export function Subscriptions() {
                 </div>
               )}
               <h3 className="text-base font-semibold">Pro</h3>
-              <p className="text-2xl font-bold mt-1">$29<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+              <p className="text-2xl font-bold mt-1">
+                {proPlanPrice ? `$${proPlanPrice.amount}` : "$29"}
+                <span className="text-sm font-normal text-muted-foreground">/{proPlanPrice?.interval === "year" ? "yr" : "mo"}</span>
+              </p>
               <p className="text-sm text-muted-foreground mt-2">All features. Unlimited events per month.</p>
               <div className="mt-4">
                 {hasActiveSubscription ? (
