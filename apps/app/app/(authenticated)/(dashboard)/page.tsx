@@ -85,7 +85,7 @@ const App = async () => {
           </CollaborationProvider>
         )}
       </Header>
-      {!hasData ? (
+      {!hasData || !dashboardData ? (
         <div className="flex flex-1 items-center justify-center p-6">
           <p className="text-muted-foreground">No data to display.</p>
         </div>
