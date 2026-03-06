@@ -2,6 +2,7 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
+import { useProductTour } from "@/lib/use-product-tour";
 import {
   Pagination,
   PaginationContent,
@@ -39,6 +40,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function EventsPage() {
+  useProductTour();
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -159,11 +161,14 @@ export default function EventsPage() {
             
             {/* Hide Add Event button for org:member */}
             {userRole !== "org:member" && (
-              <Button onClick={() => {
-                setSelectedEvent(null);
-                setSheetMode("create");
-                setIsSheetOpen(true);
-              }}>
+              <Button 
+                data-tour="create-button"
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setSheetMode("create");
+                  setIsSheetOpen(true);
+                }}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Event
               </Button>

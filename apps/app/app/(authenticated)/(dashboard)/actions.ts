@@ -4,6 +4,30 @@ import { multiTenantDb, database, TaskStatus } from "@repo/database";
 import { getTenantContext } from "../lib/auth-helpers";
 import { calculateEstimateTotal } from "../lib/estimate-helpers";
 
+/**
+ * Check if organization has any core data (events, clients, or leads)
+ * Used to determine if user is "new" and should see welcome screen
+ */
+export async function hasOrganizationData() {
+  const { internalOrgId } = await getTenantContext();
+
+  return multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+    // Check for any events
+    const eventCount = await prisma.event.count();
+    if (eventCount > 0) return true;
+
+    // Check for any clients
+    const clientCount = await prisma.client.count();
+    if (clientCount > 0) return true;
+
+    // Check for any leads
+    const leadCount = await prisma.lead.count();
+    if (leadCount > 0) return true;
+
+    return false;
+  });
+}
+
 export async function getEventsThisWeek() {
   const { internalOrgId } = await getTenantContext();
 
