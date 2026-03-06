@@ -11,7 +11,8 @@ import { Cursors } from "../components/cursors";
 import { Header } from "../components/header";
 import { StatCard } from "./components/stat-card";
 import { LeadsFunnelChart } from "./components/leads-funnel-chart";
-import { getEventsThisWeek, getOpenTasksCount, getBudgetUtilization, getBillsDue, getLeadConversionRate, getCSATScore, getTopEventsWithOpenTasks, getTopEventsWithOverdueTasks, getTopEventsWithIdleTasks, getTopCostCategories, getPendingPaymentsByStatus, getPendingPaymentsByVendors, getLeadsFunnelData, getRepeatClientsData } from "./actions";
+import { DashboardWrapper } from "./components/dashboard-wrapper";
+import { hasOrganizationData, getEventsThisWeek, getOpenTasksCount, getBudgetUtilization, getBillsDue, getLeadConversionRate, getCSATScore, getTopEventsWithOpenTasks, getTopEventsWithOverdueTasks, getTopEventsWithIdleTasks, getTopCostCategories, getPendingPaymentsByStatus, getPendingPaymentsByVendors, getLeadsFunnelData, getRepeatClientsData } from "./actions";
 
 const title = "EventDesk";
 const description = "All-in-One Event Management Platform";
@@ -34,23 +35,48 @@ const App = async () => {
     notFound();
   }
 
-  const eventsThisWeek = await getEventsThisWeek();
-  const openTasksCount = await getOpenTasksCount();
-  const budgetUtilization = await getBudgetUtilization();
-  const billsDue = await getBillsDue();
-  const leadConversionRate = await getLeadConversionRate();
-  const csatScore = await getCSATScore();
-  const topEventsWithOpenTasks = await getTopEventsWithOpenTasks();
-  const topEventsWithOverdueTasks = await getTopEventsWithOverdueTasks();
-  const topEventsWithIdleTasks = await getTopEventsWithIdleTasks();
-  const topCostCategories = await getTopCostCategories();
-  const pendingPaymentsByStatus = await getPendingPaymentsByStatus();
-  const pendingPaymentsByVendors = await getPendingPaymentsByVendors();
-  const leadsFunnelData = await getLeadsFunnelData();
-  const repeatClientsData = await getRepeatClientsData();
+  // Check if organization has any data (events, clients, leads)
+  const hasData = await hasOrganizationData();
+  const showWelcome = !hasData;
+
+  // Only load dashboard data if user has data
+  let dashboardData = null;
+  if (hasData) {
+    const eventsThisWeek = await getEventsThisWeek();
+    const openTasksCount = await getOpenTasksCount();
+    const budgetUtilization = await getBudgetUtilization();
+    const billsDue = await getBillsDue();
+    const leadConversionRate = await getLeadConversionRate();
+    const csatScore = await getCSATScore();
+    const topEventsWithOpenTasks = await getTopEventsWithOpenTasks();
+    const topEventsWithOverdueTasks = await getTopEventsWithOverdueTasks();
+    const topEventsWithIdleTasks = await getTopEventsWithIdleTasks();
+    const topCostCategories = await getTopCostCategories();
+    const pendingPaymentsByStatus = await getPendingPaymentsByStatus();
+    const pendingPaymentsByVendors = await getPendingPaymentsByVendors();
+    const leadsFunnelData = await getLeadsFunnelData();
+    const repeatClientsData = await getRepeatClientsData();
+
+    dashboardData = {
+      eventsThisWeek,
+      openTasksCount,
+      budgetUtilization,
+      billsDue,
+      leadConversionRate,
+      csatScore,
+      topEventsWithOpenTasks,
+      topEventsWithOverdueTasks,
+      topEventsWithIdleTasks,
+      topCostCategories,
+      pendingPaymentsByStatus,
+      pendingPaymentsByVendors,
+      leadsFunnelData,
+      repeatClientsData,
+    };
+  }
 
   return (
-    <>
+    <DashboardWrapper showWelcome={showWelcome}>
       <Header page="Dashboard" pages={["Home"]}>
         {env.LIVEBLOCKS_SECRET && (
           <CollaborationProvider orgId={orgId}>
@@ -59,36 +85,41 @@ const App = async () => {
           </CollaborationProvider>
         )}
       </Header>
+      {!hasData || !dashboardData ? (
+        <div className="flex flex-1 items-center justify-center p-6">
+          <p className="text-muted-foreground">No data to display.</p>
+        </div>
+      ) : (
       <div className="flex flex-1 flex-col gap-6 p-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <StatCard
             title="Events this week"
-            value={eventsThisWeek}
+            value={dashboardData.eventsThisWeek}
             icon={Calendar}
           />
           <StatCard
             title="Open Tasks"
-            value={openTasksCount}
+            value={dashboardData.openTasksCount}
             icon={ClipboardList}
           />
           <StatCard
             title="Budget Utilization"
-            value={budgetUtilization}
+            value={dashboardData.budgetUtilization}
             icon={BadgePercent}
           />
           <StatCard
             title="Bills Due"
-            value={billsDue}
+            value={dashboardData.billsDue}
             icon={Receipt}
           />
           <StatCard
             title="CSAT Score"
-            value={csatScore}
+            value={dashboardData.csatScore}
             icon={Smile}
           />
           <StatCard
             title="Lead Conversion Rate"
-            value={leadConversionRate}
+            value={dashboardData.leadConversionRate}
             icon={Sigma}
           />
         </div>
@@ -100,7 +131,7 @@ const App = async () => {
             {/* Open Tasks */}
             <div className="rounded-lg border bg-card p-6">
               <h3 className="text-sm font-semibold mb-4">Open Tasks</h3>
-              {topEventsWithOpenTasks.length > 0 ? (
+              {dashboardData.topEventsWithOpenTasks.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -111,7 +142,7 @@ const App = async () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {topEventsWithOpenTasks.map((event) => (
+                      {dashboardData.topEventsWithOpenTasks.map((event) => (
                         <tr key={event.id} className="border-b last:border-0">
                           <td className="py-3 text-sm">
                             <Link href={`/events/${event.id}`} className="hover:underline">
@@ -133,11 +164,11 @@ const App = async () => {
             {/* Overdue Tasks */}
             <div className="rounded-lg border bg-card p-6">
               <h3 className="text-sm font-semibold mb-4">Overdue Tasks</h3>
-              {topEventsWithOverdueTasks.length > 0 ? (
+              {dashboardData.topEventsWithOverdueTasks.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <tbody>
-                      {topEventsWithOverdueTasks.map((event) => {
+                      {dashboardData.topEventsWithOverdueTasks.map((event) => {
                         const progressColor = 
                           event.percentage <= 33 ? "[&_[data-slot=progress-indicator]]:bg-green-500" :
                           event.percentage <= 66 ? "[&_[data-slot=progress-indicator]]:bg-yellow-500" :
@@ -171,7 +202,7 @@ const App = async () => {
             {/* Idle Tasks */}
             <div className="rounded-lg border bg-card p-6">
               <h3 className="text-sm font-semibold mb-4">Idle Tasks</h3>
-              {topEventsWithIdleTasks.length > 0 ? (
+              {dashboardData.topEventsWithIdleTasks.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -182,7 +213,7 @@ const App = async () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {topEventsWithIdleTasks.map((event) => (
+                      {dashboardData.topEventsWithIdleTasks.map((event) => (
                         <tr key={event.id} className="border-b last:border-0">
                           <td className="py-3 text-sm">
                             <Link href={`/events/${event.id}`} className="hover:underline">
@@ -210,12 +241,12 @@ const App = async () => {
             {/* Top 5 Cost Categories */}
             <div className="rounded-lg border bg-card p-6">
               <h3 className="text-sm font-semibold mb-4">Top 5 Cost Categories</h3>
-              {topCostCategories.categories.length > 0 ? (
+              {dashboardData.topCostCategories.categories.length > 0 ? (
                 <>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <tbody>
-                        {topCostCategories.categories.map((category) => {
+                        {dashboardData.topCostCategories.categories.map((category) => {
                           const progressColor = 
                             category.percentage > 90 ? "[&_[data-slot=progress-indicator]]:bg-red-500" :
                             category.percentage >= 70 ? "[&_[data-slot=progress-indicator]]:bg-yellow-500" :
@@ -246,7 +277,7 @@ const App = async () => {
                   </div>
                   <div className="mt-4 pt-4 border-t flex justify-between items-center">
                     <span className="text-sm font-semibold">Total Spend</span>
-                    <span className="text-sm font-bold">{topCostCategories.totalSpend}</span>
+                    <span className="text-sm font-bold">{dashboardData.topCostCategories.totalSpend}</span>
                   </div>
                 </>
               ) : (
@@ -266,7 +297,7 @@ const App = async () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingPaymentsByStatus.map((item) => (
+                    {dashboardData.pendingPaymentsByStatus.map((item) => (
                       <tr key={item.status} className="border-b last:border-0">
                         <td className="py-3 text-sm">{item.status}</td>
                         <td className="text-right py-3 text-sm font-medium">{item.amount}</td>
@@ -280,7 +311,7 @@ const App = async () => {
             {/* Pending Payments by Vendors */}
             <div className="rounded-lg border bg-card p-6">
               <h3 className="text-sm font-semibold mb-4">Pending Payments by Vendors</h3>
-              {pendingPaymentsByVendors.length > 0 ? (
+              {dashboardData.pendingPaymentsByVendors.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -290,7 +321,7 @@ const App = async () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {pendingPaymentsByVendors.map((vendor) => (
+                      {dashboardData.pendingPaymentsByVendors.map((vendor) => (
                         <tr key={vendor.id} className="border-b last:border-0">
                           <td className="py-3 text-sm">{vendor.name}</td>
                           <td className="text-right py-3 text-sm font-medium">{vendor.formattedAmount}</td>
@@ -313,7 +344,7 @@ const App = async () => {
             {/* Leads Funnel */}
             <div className="rounded-lg border bg-card p-6">
               <h3 className="text-sm font-semibold mb-4">Leads Funnel</h3>
-              <LeadsFunnelChart data={leadsFunnelData.funnelData} metrics={leadsFunnelData.metrics} />
+              <LeadsFunnelChart data={dashboardData.leadsFunnelData.funnelData} metrics={dashboardData.leadsFunnelData.metrics} />
             </div>
 
             {/* Repeat Clients */}
@@ -321,16 +352,16 @@ const App = async () => {
               <h3 className="text-sm font-semibold mb-4">Repeat Clients</h3>
               <div className="space-y-4">
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-primary">{repeatClientsData.repeatPercentage}</div>
+                  <div className="text-4xl font-bold text-primary">{dashboardData.repeatClientsData.repeatPercentage}</div>
                   <p className="text-xs text-muted-foreground mt-1">of clients are repeat clients</p>
                 </div>
                 
                 <div className="flex justify-between items-center py-2 border-t">
                   <span className="text-sm text-muted-foreground">Average Events per client:</span>
-                  <span className="text-sm font-medium">{repeatClientsData.avgEventsPerClient}</span>
+                  <span className="text-sm font-medium">{dashboardData.repeatClientsData.avgEventsPerClient}</span>
                 </div>
 
-                {repeatClientsData.topRepeatClients.length > 0 ? (
+                {dashboardData.repeatClientsData.topRepeatClients.length > 0 ? (
                   <>
                     <h4 className="text-xs font-semibold mt-4">Top Repeat Clients</h4>
                     <div className="overflow-x-auto">
@@ -342,7 +373,7 @@ const App = async () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {repeatClientsData.topRepeatClients.map((client) => (
+                          {dashboardData.repeatClientsData.topRepeatClients.map((client) => (
                             <tr key={client.id} className="border-b last:border-0">
                               <td className="py-2 text-xs">{client.name}</td>
                               <td className="text-right py-2 text-xs">{client.eventCount}</td>
@@ -360,7 +391,8 @@ const App = async () => {
           </div>
         </section>
       </div>
-    </>
+      )}
+    </DashboardWrapper>
   );
 };
 

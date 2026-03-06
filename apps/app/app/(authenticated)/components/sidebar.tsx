@@ -157,7 +157,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
 
   return (
     <>
-      <Sidebar variant="inset" collapsible="icon" suppressHydrationWarning>
+      <Sidebar variant="inset" collapsible="icon" suppressHydrationWarning data-tour="sidebar">
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -206,12 +206,17 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                             target="_blank" 
                             rel="noopener noreferrer"
                             onClick={handleLinkClick}
+                            data-tour={item.title.toLowerCase().replace(/\s+/g, '-')}
                           >
                             <item.icon />
                             <span>{item.title}</span>
                           </a>
                         ) : (
-                          <Link href={item.url} onClick={handleLinkClick}>
+                          <Link 
+                            href={item.url} 
+                            onClick={handleLinkClick}
+                            data-tour={item.title.toLowerCase().replace(/\s+/g, '-')}
+                          >
                             <item.icon />
                             <span>{item.title}</span>
                           </Link>
