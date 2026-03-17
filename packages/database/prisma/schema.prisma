@@ -39,6 +39,7 @@ model User {
   organizationMemberships   OrganizationMember[]
   assignedTasks             Task[]
   subscription              Subscription?
+  exitFeedback              ExitFeedback[]
 
   @@map("users")
   @@index([clerkId])
@@ -544,5 +545,23 @@ model Subscription {
   user          User         @relation(fields: [userId], references: [id])
 
   @@map("subscriptions")
+  @@index([userId])
+}
+
+model ExitFeedback {
+  id                        String   @id @default(cuid())
+
+  userId                    String   
+  feedbackText              String
+  source                    String  // web or mobile
+
+  // Audit Fields
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
+  // Relationships
+  user          User         @relation(fields: [userId], references: [id])
+
+  @@map("exit_feedback")
   @@index([userId])
 }
