@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { env } from "@/env";
 import { NotificationsProvider } from "./components/notifications-provider";
 import { GlobalSidebar } from "./components/sidebar";
+import { ExitFeedbackProvider } from "./components/exit-feedback-provider";
 
 type AppLayoutProperties = {
   readonly children: ReactNode;
@@ -38,7 +39,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
           </GlobalSidebar>
         </SidebarProvider>
       </NotificationsProvider>
-      
+      <ExitFeedbackProvider />
     </>
   );
 };

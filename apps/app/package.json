@@ -36,7 +36,9 @@
     "next-themes": "^0.4.6",
     "react": "19.2.1",
     "react-dom": "19.2.1",
+    "react-idle-timer": "^5.7.2",
     "require-in-the-middle": "7.5.2",
+    "use-exit-intent": "^1.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
