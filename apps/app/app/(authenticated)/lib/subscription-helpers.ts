@@ -1,4 +1,5 @@
 import { database, multiTenantDb } from "@repo/database";
+import { FREE_TIER_EVENT_LIMIT } from "./constants";
 
 /**
  * Helper function to check if user can create events based on subscription
@@ -55,11 +56,11 @@ export async function checkEventCreationLimit(internalUserId: string, internalOr
     });
   });
 
-  // Free tier allows 2 events per month
-  if (eventCount >= 2) {
+  // Free tier limit
+  if (eventCount >= FREE_TIER_EVENT_LIMIT) {
     return {
       allowed: false,
-      error: "You've reached the limit of 2 events per month on the Free plan. Upgrade to Pro for unlimited events.",
+      error: `You've reached the limit of ${FREE_TIER_EVENT_LIMIT} events per month on the Free plan. Upgrade to Pro for unlimited events.`,
     };
   }
 
