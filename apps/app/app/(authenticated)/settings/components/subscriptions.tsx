@@ -14,6 +14,7 @@ import {
 import { useSearchParams, useRouter } from "next/navigation";
 import { ContactSalesDialog } from "./contact-sales-dialog";
 import { CancelSubscriptionDialog } from "./cancel-subscription-dialog";
+import { FREE_TIER_EVENT_LIMIT } from "../../lib/constants";
 
 interface SubscriptionData {
   id: string;
@@ -204,7 +205,7 @@ export function Subscriptions() {
             <div className="rounded-lg border p-6">
               <h3 className="text-base font-semibold">Free</h3>
               <p className="text-2xl font-bold mt-1">$0<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
-              <p className="text-sm text-muted-foreground mt-2">All features. Upto 2 events per month.</p>
+              <p className="text-sm text-muted-foreground mt-2">All features. Up to {FREE_TIER_EVENT_LIMIT} events per month.</p>
               <div className="mt-4">
                 {hasActiveSubscription ? (
                   subscription.cancelAtPeriodEnd ? (
