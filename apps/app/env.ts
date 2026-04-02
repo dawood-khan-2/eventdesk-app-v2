@@ -35,9 +35,13 @@ export const env = createEnv({
   },
   client: {
     NEXT_PUBLIC_STRIPE_PRO_PRICE_ID: z.string().startsWith("price_"),
+    NEXT_PUBLIC_TAWK_PROPERTY_ID: z.string().optional(),
+    NEXT_PUBLIC_TAWK_WIDGET_ID: z.string().optional(),
   },
   runtimeEnv: {
     SALES_EMAIL: process.env.SALES_EMAIL,
     NEXT_PUBLIC_STRIPE_PRO_PRICE_ID: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
+    NEXT_PUBLIC_TAWK_PROPERTY_ID: process.env.NEXT_PUBLIC_TAWK_PROPERTY_ID,
+    NEXT_PUBLIC_TAWK_WIDGET_ID: process.env.NEXT_PUBLIC_TAWK_WIDGET_ID,
   },
 });

@@ -10,7 +10,19 @@ import { createExitFeedback } from "@/app/(authenticated)/actions";
 
 type TriggerType = "exit" | "idle" | "manual";
 
-export function ExitFeedbackProvider() {
+type ExitFeedbackProviderProps = {
+  enableExitDetection?: boolean;
+  enableIdleDetection?: boolean;
+  idleTimeoutSeconds?: number;
+  enableFeedbackButton?: boolean;
+};
+
+export function ExitFeedbackProvider({
+  enableExitDetection = true,
+  enableIdleDetection = true,
+  idleTimeoutSeconds = 30,
+  enableFeedbackButton = true,
+}: ExitFeedbackProviderProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [triggerType, setTriggerType] = useState<TriggerType>("exit");
 
@@ -22,8 +34,8 @@ export function ExitFeedbackProvider() {
     },
     desktop: {
       triggerOnIdle: false, // Disabled - using react-idle-timer instead
-      useBeforeUnload: true,
-      triggerOnMouseLeave: true,
+      useBeforeUnload: enableExitDetection,
+      triggerOnMouseLeave: enableExitDetection,
       delayInSecondsToTrigger: 1,
     },
     mobile: {
@@ -32,10 +44,12 @@ export function ExitFeedbackProvider() {
     },
   });
 
-  // Idle detection (30 seconds)
+  // Idle detection (configurable timeout via PostHog payload)
   useIdleTimer({
-    timeout: 30000, // 30 seconds
+    timeout: idleTimeoutSeconds * 1000, // Convert seconds to milliseconds
     onIdle: () => {
+      if (!enableIdleDetection) return;
+      
       setTriggerType("idle");
       setShowDialog(true);
       
@@ -43,25 +57,28 @@ export function ExitFeedbackProvider() {
       analytics.capture("Exit Feedback Shown", {
         trigger: "idle",
         source: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? "mobile" : "web",
+        idleTimeoutSeconds,
       });
     },
     throttle: 500,
   });
 
   // Exit intent handler
-  registerHandler({
-    id: "exit-feedback",
-    handler: () => {
-      setTriggerType("exit");
-      setShowDialog(true);
-      
-      // Track analytics: exit feedback shown
-      analytics.capture("Exit Feedback Shown", {
-        trigger: "exit",
-        source: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? "mobile" : "web",
-      });
-    },
-  });
+  if (enableExitDetection) {
+    registerHandler({
+      id: "exit-feedback",
+      handler: () => {
+        setTriggerType("exit");
+        setShowDialog(true);
+        
+        // Track analytics: exit feedback shown
+        analytics.capture("Exit Feedback Shown", {
+          trigger: "exit",
+          source: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? "mobile" : "web",
+        });
+      },
+    });
+  }
 
   const handleManualTrigger = () => {
     setTriggerType("manual");
@@ -127,7 +144,9 @@ export function ExitFeedbackProvider() {
         onDismiss={handleDismiss}
         triggerType={triggerType}
       />
-      <FloatingFeedbackButton onClick={handleManualTrigger} />
+      {enableFeedbackButton && (
+        <FloatingFeedbackButton onClick={handleManualTrigger} />
+      )}
     </>
   );
 }
