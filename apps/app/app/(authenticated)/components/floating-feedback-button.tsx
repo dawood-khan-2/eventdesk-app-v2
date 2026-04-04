@@ -22,10 +22,10 @@ export function FloatingFeedbackButton({ onClick }: FloatingFeedbackButtonProps)
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-50 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center p-0 border-0"
+      className="fixed bottom-4 right-4 h-12 w-12 md:h-14 md:w-14 rounded-full shadow-lg z-50 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center p-0 border-0"
       aria-label="Share feedback"
     >
-      <MessageCircleQuestion className="h-10 w-10" strokeWidth={1.5} />
+      <MessageCircleQuestion className="h-6 w-6 md:h-8 md:w-8" strokeWidth={1.5} />
     </button>
   );
 }
