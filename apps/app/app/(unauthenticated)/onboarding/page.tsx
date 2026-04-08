@@ -133,7 +133,9 @@ export default function OnboardingPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="org-name">Organization name</Label>
+            <Label htmlFor="org-name">
+              Organization name <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="org-name"
               type="text"
@@ -141,6 +143,7 @@ export default function OnboardingPage() {
               onChange={(e) => setOrgName(e.target.value)}
               placeholder="e.g. Acme Events"
               disabled={loading || !isLoaded}
+              required
             />
           </div>
 
