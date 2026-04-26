@@ -78,7 +78,8 @@ export default authMiddleware(async (auth, request) => {
     }
   }
 
-  return securityHeaders();
+  // Use relaxed security headers for authenticated routes to allow Cal.com embeds
+  return relaxedSecurityHeaders();
 }) as unknown as NextMiddleware;
 
 export const config = {
