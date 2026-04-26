@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@calcom/embed-react": "^1.5.3",
     "@hcaptcha/react-hcaptcha": "^1.11.0",
     "@repo/analytics": "*",
     "@repo/auth": "*",
