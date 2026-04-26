@@ -13,6 +13,7 @@ import { Separator } from "@repo/design-system/components/ui/separator";
 import { useSidebar } from "@repo/design-system/components/ui/sidebar";
 import { Menu, PanelLeftIcon } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
+import { BookDemoButton } from "@/components/book-demo-button";
 
 type HeaderProps = {
   pages: string[];
@@ -55,7 +56,10 @@ export const Header = ({ pages, page, children }: HeaderProps) => {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-      {children}
+      <div className="flex items-center gap-2 px-4">
+        <BookDemoButton />
+        {children}
+      </div>
     </header>
   );
 };
