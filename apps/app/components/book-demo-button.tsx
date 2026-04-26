@@ -17,7 +17,7 @@ export const BookDemoButton = () => {
       variant="outline"
       data-cal-namespace="demo-of-eventdesk"
       data-cal-link="raja-ramachandran-br5zin/demo-of-eventdesk"
-      data-cal-config='{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}'
+      data-cal-config='{"layout":"month_view","useSlotsViewOnSmallScreen":true}'
     >
       Book a Demo
     </Button>
