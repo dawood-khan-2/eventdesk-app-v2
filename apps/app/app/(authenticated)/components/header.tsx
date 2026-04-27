@@ -12,6 +12,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { Separator } from "@repo/design-system/components/ui/separator";
 import { useSidebar } from "@repo/design-system/components/ui/sidebar";
 import { Menu, PanelLeftIcon } from "lucide-react";
+import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { BookDemoButton } from "@/components/book-demo-button";
 
@@ -41,14 +42,19 @@ export const Header = ({ pages, page, children }: HeaderProps) => {
         <Separator className="mr-2 h-4" orientation="vertical" />
         <Breadcrumb>
           <BreadcrumbList>
-            {pages.map((page, index) => (
-              <Fragment key={page}>
-                {index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">{page}</BreadcrumbLink>
-                </BreadcrumbItem>
-              </Fragment>
-            ))}
+            {pages.map((page, index) => {
+              const href = page === "Home" ? "/" : `/${page.toLowerCase().replace(/\s+/g, "-")}`;
+              return (
+                <Fragment key={page}>
+                  {index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
+                  <BreadcrumbItem className="hidden md:block">
+                    <BreadcrumbLink asChild>
+                      <Link href={href}>{page}</Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                </Fragment>
+              );
+            })}
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
               <BreadcrumbPage>{page}</BreadcrumbPage>
