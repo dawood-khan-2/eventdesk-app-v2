@@ -15,15 +15,28 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@repo/design-system/components/ui/form";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
-import { Checkbox } from "@repo/design-system/components/ui/checkbox";
 import { Badge } from "@repo/design-system/components/ui/badge";
+import { Separator } from "@repo/design-system/components/ui/separator";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@repo/design-system/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@repo/design-system/components/ui/popover";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createVendor, updateVendor } from "../actions";
 import { toast } from "sonner";
 import { useTransition, useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, X, Plus } from "lucide-react";
 import { DeleteVendorDialog } from "./delete-vendor-dialog";
 
 const vendorFormSchema = z.object({
@@ -32,7 +45,7 @@ const vendorFormSchema = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
-  serviceIds: z.array(z.string()).optional(),
+  serviceIds: z.array(z.string()).min(1, "Please select at least one service"),
 });
 
 type VendorFormValues = z.infer<typeof vendorFormSchema>;
@@ -74,6 +87,7 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
   const [mode, setMode] = useState(initialMode);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [serviceComboboxOpen, setServiceComboboxOpen] = useState(false);
 
   const isViewing = mode === "view";
   const isEditing = mode === "edit";
@@ -206,6 +220,108 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6 py-6">
               <FormField
                 control={form.control}
+                name="serviceIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="mb-4">
+                      <FormLabel className="text-base">Services Provided *</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Select the services this vendor provides
+                      </p>
+                    </div>
+                    {isViewing && vendor ? (
+                      <div className="flex flex-wrap gap-2">
+                        {vendor.services.length > 0 ? (
+                          vendor.services.map((service) => (
+                            <Badge key={service.id} variant="secondary">
+                              {service.service.name}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No services selected</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {/* Selected Services as Chips */}
+                        {field.value && field.value.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {field.value.map((serviceId) => {
+                              const service = serviceCategories.find(s => s.id === serviceId);
+                              if (!service) return null;
+                              return (
+                                <Badge
+                                  key={serviceId}
+                                  variant="secondary"
+                                  className="pr-1 flex items-center gap-1"
+                                >
+                                  {service.name}
+                                  <button
+                                    type="button"
+                                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    onClick={() => {
+                                      field.onChange(
+                                        field.value?.filter((id) => id !== serviceId) || []
+                                      );
+                                    }}
+                                  >
+                                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
+                        {/* Combobox for Selecting Services */}
+                        <Popover open={serviceComboboxOpen} onOpenChange={setServiceComboboxOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              type="button"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Select Service
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search services..." />
+                              <CommandList>
+                                <CommandEmpty>No service found.</CommandEmpty>
+                                <CommandGroup>
+                                  {serviceCategories
+                                    .filter(category => !field.value?.includes(category.id))
+                                    .map((category) => (
+                                      <CommandItem
+                                        key={category.id}
+                                        value={category.name}
+                                        onSelect={() => {
+                                          field.onChange([...(field.value || []), category.id]);
+                                          setServiceComboboxOpen(false);
+                                        }}
+                                      >
+                                        {category.name}
+                                      </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Separator className="my-6" />
+
+              <FormField
+                control={form.control}
                 name="companyName"
                 render={({ field }) => (
                   <FormItem>
@@ -279,69 +395,7 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="serviceIds"
-                render={() => (
-                  <FormItem>
-                    <div className="mb-4">
-                      <FormLabel className="text-base">Services Provided</FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Select the services this vendor provides
-                      </p>
-                    </div>
-                    {isViewing && vendor ? (
-                      <div className="flex flex-wrap gap-2">
-                        {vendor.services.length > 0 ? (
-                          vendor.services.map((service) => (
-                            <Badge key={service.id} variant="secondary">
-                              {service.service.name}
-                            </Badge>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No services selected</p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {serviceCategories.map((category) => (
-                          <FormField
-                            key={category.id}
-                            control={form.control}
-                            name="serviceIds"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={category.id}
-                                  className="flex flex-row items-start space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(category.id)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([...(field.value || []), category.id])
-                                          : field.onChange(
-                                              field.value?.filter((value) => value !== category.id)
-                                            );
-                                      }}
-                                      disabled={isViewing}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-normal cursor-pointer">
-                                    {category.name}
-                                  </FormLabel>
-                                </FormItem>
-                              );
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
 
               {vendor && (
                 <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted p-3">
