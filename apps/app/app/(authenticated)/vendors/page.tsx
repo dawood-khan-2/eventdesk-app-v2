@@ -151,6 +151,7 @@ export default function VendorsPage() {
     setSelectedVendor(null);
     setSheetMode("create");
     setCurrentPage(1);
+    loadServiceCategories(); // Reload service categories in case new ones were added
     loadVendors(debouncedSearchQuery, selectedServiceCategory === "all" ? undefined : selectedServiceCategory, 1);
   };
 

@@ -329,6 +329,9 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         onSuccess();
         if (event) {
           setMode("view");
+        } else if (result.data) {
+          // Redirect to newly created event's manage page
+          router.push(`/events/${result.data.id}`);
         }
       }
     });

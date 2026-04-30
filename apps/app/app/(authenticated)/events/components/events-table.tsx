@@ -91,10 +91,10 @@ export function EventsTable({
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="ml-auto h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-36" /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -207,7 +207,7 @@ export function EventsTable({
               <TableHead>Start Date</TableHead>
               <TableHead>End Date</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -222,38 +222,37 @@ export function EventsTable({
                   <TableCell className="font-medium">{event.name}</TableCell>
                   <TableCell>{event.client?.name || "-"}</TableCell>
                   <TableCell>{event.venue || "-"}</TableCell>
-                  <TableCell>{format(new Date(event.startDate), "PPp")}</TableCell>
-                  <TableCell>{format(new Date(event.endDate), "PPp")}</TableCell>
+                  <TableCell>{format(new Date(event.startDate), "PP")}</TableCell>
+                  <TableCell>{format(new Date(event.endDate), "PP")}</TableCell>
                   <TableCell>
                     <Badge className={cn("border-0", status.bgColor, status.color)}>
                       {status.label}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
                       {userRole !== "org:member" && (
                         <Button
-                          variant="ghost"
-                          size="icon"
+                          variant="outline"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditClick(event);
                           }}
                         >
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
+                          Edit
                         </Button>
                       )}
                       <Button
-                        variant="ghost"
-                        size="icon"
+                        variant="outline"
+                        size="sm"
+                        className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(`/events/${event.id}`);
                         }}
                       >
-                        <ArrowRight className="h-4 w-4" />
-                        <span className="sr-only">Manage</span>
+                        Manage
                       </Button>
                     </div>
                   </TableCell>
