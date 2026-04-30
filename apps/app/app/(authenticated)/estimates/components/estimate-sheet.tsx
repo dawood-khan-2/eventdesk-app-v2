@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import {
@@ -35,6 +36,14 @@ import {
   PopoverTrigger,
 } from "@repo/design-system/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@repo/design-system/components/ui/dialog";
+import { Label } from "@repo/design-system/components/ui/label";
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -47,6 +56,7 @@ import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { createEstimate, updateEstimate } from "../actions";
 import { getClients } from "../../clients/actions";
 import { getLeads } from "../../leads/actions";
+import { createServiceCategory } from "../../settings/actions";
 import { toast } from "sonner";
 import { getCurrencyConfig } from "@repo/internationalization/currencies";
 import { cn } from "@repo/design-system/lib/utils";
@@ -87,11 +97,15 @@ interface EstimateSheetProps {
   };
 }
 
-export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, currencyCode = "USD", serviceCategories, eventData }: EstimateSheetProps) {
+export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, currencyCode = "USD", serviceCategories: initialServiceCategories, eventData }: EstimateSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [createLeadDialogOpen, setCreateLeadDialogOpen] = useState(false);
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
+  const [addServiceDialogOpen, setAddServiceDialogOpen] = useState(false);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>(initialServiceCategories);
+  const pendingLineItemIndexRef = useRef<number | null>(null);
   const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
   const [clients, setClients] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
   const currency = getCurrencyConfig(currencyCode);
@@ -188,8 +202,66 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
     
     fetchData();
   }, []);
+
+  // Update local service categories when prop changes
+  useEffect(() => {
+    setServiceCategories(initialServiceCategories);
+  }, [initialServiceCategories]);
+
+  const handleAddService = () => {
+    setIsSubmitting(true);
+    
+    if (!newServiceName.trim()) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    createServiceCategory({ name: newServiceName.trim() })
+      .then((result) => {
+        if (result.error) {
+          toast.error(result.error);
+        } else if (result.data) {
+          // Use flushSync to ensure synchronous state updates
+          flushSync(() => {
+            // Add to local state
+            setServiceCategories(prev => [...prev, result.data]);
+          });
+          
+          // Auto-select the newly created service for the pending line item
+          if (pendingLineItemIndexRef.current !== null) {
+            const lineItemIndex = pendingLineItemIndexRef.current;
+            flushSync(() => {
+              setFormData(prev => {
+                const updated = {
+                  ...prev,
+                  lineItems: prev.lineItems.map((item: LineItem, i: number) => 
+                    i === lineItemIndex ? { ...item, serviceCategoryId: result.data.id } : item
+                  )
+                };
+                return updated;
+              });
+            });
+            setIsDirty(true);
+            pendingLineItemIndexRef.current = null;
+          }
+          
+          toast.success("Service category created and selected");
+          setNewServiceName("");
+          setAddServiceDialogOpen(false);
+        }
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
+  };
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
+      // Don't show cancel confirm if the add service dialog is open
+      if (addServiceDialogOpen) {
+        return; // Ignore this close attempt
+      }
+      
       // Check if form is dirty and in create/edit mode
       if (isDirty && (mode === "create" || mode === "edit")) {
         setShowCancelConfirm(true);
@@ -392,6 +464,12 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
       <SheetContent 
         className="w-full sm:max-w-4xl overflow-y-auto"
         onInteractOutside={(e) => {
+          // Always prevent closing if the add service dialog is open
+          if (addServiceDialogOpen) {
+            e.preventDefault();
+            return;
+          }
+          
           // Prevent closing when clicking outside if form is dirty
           if (isDirty && (mode === "create" || mode === "edit")) {
             e.preventDefault();
@@ -859,8 +937,16 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       <div className="md:col-span-3">
                         <label className="text-sm font-medium">Service Category</label>
                         <Select 
-                          value={item.serviceCategoryId}
-                          onValueChange={(value) => updateLineItem(index, 'serviceCategoryId', value)}
+                          key={`select-${item.id}-${item.serviceCategoryId}`}
+                          value={item.serviceCategoryId || ""}
+                          onValueChange={(value) => {
+                            if (value === "add-new") {
+                              pendingLineItemIndexRef.current = index;
+                              setAddServiceDialogOpen(true);
+                            } else {
+                              updateLineItem(index, 'serviceCategoryId', value);
+                            }
+                          }}
                         >
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select category..." />
@@ -871,6 +957,12 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                                 {category.name}
                               </SelectItem>
                             ))}
+                            <SelectItem value="add-new" className="text-primary">
+                              <div className="flex items-center">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Service
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1044,6 +1136,59 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
       onOpenChange={setCreateClientDialogOpen}
       onSuccess={handleClientCreated}
     />
+
+    {/* Add Service Dialog */}
+    <Dialog open={addServiceDialogOpen} onOpenChange={(open) => {
+      setAddServiceDialogOpen(open);
+      if (!open) {
+        // Clear pending state when dialog is closed
+        pendingLineItemIndexRef.current = null;
+        setNewServiceName("");
+      }
+    }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Service Category</DialogTitle>
+          <DialogDescription className="sr-only">Create a new service category</DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAddService();
+          }}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="new-service-name">Service Name</Label>
+            <Input
+              id="new-service-name"
+              value={newServiceName}
+              onChange={(e) => setNewServiceName(e.target.value)}
+              placeholder="e.g., Wedding Planning"
+              disabled={isSubmitting}
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setNewServiceName("");
+                pendingLineItemIndexRef.current = null;
+                setAddServiceDialogOpen(false);
+              }}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting || !newServiceName.trim()}>
+              {isSubmitting ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   </>
   );
 }

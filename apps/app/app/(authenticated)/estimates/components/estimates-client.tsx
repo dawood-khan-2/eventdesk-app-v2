@@ -154,9 +154,13 @@ export function EstimatesClient({
     // Refresh data after successful create/update
     handleSheetClose();
     startTransition(async () => {
-      const result = await getEstimates(currentPage, 20, debouncedSearchQuery, eventId);
-      if (result.data) {
-        const transformedEstimates = result.data.map(estimate => ({
+      const [estimatesResult, categoriesResult] = await Promise.all([
+        getEstimates(currentPage, 20, debouncedSearchQuery, eventId),
+        getServiceCategories(),
+      ]);
+      
+      if (estimatesResult.data) {
+        const transformedEstimates = estimatesResult.data.map(estimate => ({
           ...estimate,
           createdAt: estimate.createdAt.toISOString(),
           eventStartDate: estimate.eventStartDate?.toISOString() || null,
@@ -165,6 +169,10 @@ export function EstimatesClient({
         }));
         setEstimates(transformedEstimates);
         setTotalPages(Math.ceil(transformedEstimates.length / 10));
+      }
+      
+      if (categoriesResult.data) {
+        setServiceCategories(categoriesResult.data);
       }
     });
   };

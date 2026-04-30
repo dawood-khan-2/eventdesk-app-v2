@@ -35,6 +35,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@repo/design-system/components/ui/dialog";
 import { Label } from "@repo/design-system/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -165,6 +166,11 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
+      // Don't show cancel confirm if the add service dialog is open
+      if (addServiceDialogOpen) {
+        return; // Ignore this close attempt
+      }
+      
       // Check if form is dirty and in create/edit mode
       if (form.formState.isDirty && (isCreating || isEditing)) {
         setShowCancelConfirm(true);
@@ -247,6 +253,12 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
         <SheetContent 
           className="overflow-y-auto sm:max-w-xl"
           onInteractOutside={(e) => {
+            // Always prevent closing if the add service dialog is open
+            if (addServiceDialogOpen) {
+              e.preventDefault();
+              return;
+            }
+            
             // Prevent closing when clicking outside if form is dirty
             if (form.formState.isDirty && (isCreating || isEditing)) {
               e.preventDefault();
@@ -547,6 +559,7 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Service Category</DialogTitle>
+            <DialogDescription className="sr-only">Create a new service category</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(e) => {
