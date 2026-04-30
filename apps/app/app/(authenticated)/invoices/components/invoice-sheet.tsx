@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
@@ -37,6 +38,14 @@ import {
   PopoverTrigger,
 } from "@repo/design-system/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@repo/design-system/components/ui/dialog";
+import { Label } from "@repo/design-system/components/ui/label";
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -48,6 +57,7 @@ import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { createInvoice } from "../actions";
 import { getClients } from "../../clients/actions";
 import { getEvents } from "../../events/actions";
+import { createServiceCategory } from "../../settings/actions";
 import { toast } from "sonner";
 import { getCurrencyConfig } from "@repo/internationalization/currencies";
 import { cn } from "@repo/design-system/lib/utils";
@@ -127,12 +137,16 @@ export function InvoiceSheet({
   invoice,
   onSuccess,
   currencyCode = "USD",
-  serviceCategories,
+  serviceCategories: initialServiceCategories,
   eventData,
 }: InvoiceSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientComboboxOpen, setClientComboboxOpen] = useState(false);
   const [eventComboboxOpen, setEventComboboxOpen] = useState(false);
+  const [addServiceDialogOpen, setAddServiceDialogOpen] = useState(false);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>(initialServiceCategories);
+  const pendingLineItemIndexRef = useRef<number | null>(null);
   const [clients, setClients] = useState<Array<{ id: string; name: string; address: string | null }>>([]);
   const [events, setEvents] = useState<Array<{ id: string; name: string; clientId: string }>>([]);
   const currency = getCurrencyConfig(currencyCode);
@@ -217,6 +231,58 @@ export function InvoiceSheet({
     fetchData();
   }, []);
 
+  // Update local service categories when prop changes
+  useEffect(() => {
+    setServiceCategories(initialServiceCategories);
+  }, [initialServiceCategories]);
+
+  const handleAddService = () => {
+    setIsSubmitting(true);
+    
+    if (!newServiceName.trim()) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    createServiceCategory({ name: newServiceName.trim() })
+      .then((result) => {
+        if (result.error) {
+          toast.error(result.error);
+        } else if (result.data) {
+          // Use flushSync to ensure synchronous state updates
+          flushSync(() => {
+            // Add to local state
+            setServiceCategories(prev => [...prev, result.data]);
+          });
+          
+          // Auto-select the newly created service for the pending line item
+          if (pendingLineItemIndexRef.current !== null) {
+            const lineItemIndex = pendingLineItemIndexRef.current;
+            flushSync(() => {
+              setFormData(prev => {
+                const updated = {
+                  ...prev,
+                  lineItems: prev.lineItems.map((item: LineItem, i: number) => 
+                    i === lineItemIndex ? { ...item, serviceCategoryId: result.data.id } : item
+                  )
+                };
+                return updated;
+              });
+            });
+            setIsDirty(true);
+            pendingLineItemIndexRef.current = null;
+          }
+          
+          toast.success("Service category created and selected");
+          setNewServiceName("");
+          setAddServiceDialogOpen(false);
+        }
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
+  };
+
   // Auto-fill billTo when client is selected
   useEffect(() => {
     if (formData.clientId) {
@@ -229,6 +295,11 @@ export function InvoiceSheet({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
+      // Don't show cancel confirm if the add service dialog is open
+      if (addServiceDialogOpen) {
+        return; // Ignore this close attempt
+      }
+      
       // Check if form is dirty and in create mode
       if (isDirty && mode === "create") {
         setShowCancelConfirm(true);
@@ -396,6 +467,12 @@ export function InvoiceSheet({
       <SheetContent 
         className="w-full sm:max-w-4xl overflow-y-auto"
         onInteractOutside={(e) => {
+          // Always prevent closing if the add service dialog is open
+          if (addServiceDialogOpen) {
+            e.preventDefault();
+            return;
+          }
+          
           if (isDirty && mode === "create") {
             e.preventDefault();
             setShowCancelConfirm(true);
@@ -864,7 +941,18 @@ export function InvoiceSheet({
                     >
                       <div className="md:col-span-3">
                         <label className="text-sm font-medium">Service Category</label>
-                        <Select value={item.serviceCategoryId} onValueChange={(value) => updateLineItem(index, "serviceCategoryId", value)}>
+                        <Select 
+                          key={`select-${item.id}-${item.serviceCategoryId}`}
+                          value={item.serviceCategoryId || ""}
+                          onValueChange={(value) => {
+                            if (value === "add-new") {
+                              pendingLineItemIndexRef.current = index;
+                              setAddServiceDialogOpen(true);
+                            } else {
+                              updateLineItem(index, "serviceCategoryId", value);
+                            }
+                          }}
+                        >
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select category..." />
                           </SelectTrigger>
@@ -874,6 +962,12 @@ export function InvoiceSheet({
                                 {category.name}
                               </SelectItem>
                             ))}
+                            <SelectItem value="add-new" className="text-primary">
+                              <div className="flex items-center">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Service
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1062,6 +1156,54 @@ export function InvoiceSheet({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    {/* Add Service Category Dialog */}
+    <Dialog open={addServiceDialogOpen} onOpenChange={setAddServiceDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Service Category</DialogTitle>
+          <DialogDescription>
+            Create a new service category to use in your invoice.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="service-name">Service Name</Label>
+            <Input
+              id="service-name"
+              placeholder="e.g. Catering, Photography, Venue"
+              value={newServiceName}
+              onChange={(e) => setNewServiceName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddService();
+                }
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setAddServiceDialogOpen(false);
+              setNewServiceName("");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleAddService}
+            disabled={!newServiceName.trim() || isSubmitting}
+          >
+            {isSubmitting ? "Adding..." : "Add Service"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
