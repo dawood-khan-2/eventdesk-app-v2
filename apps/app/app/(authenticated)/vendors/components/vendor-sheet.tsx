@@ -30,10 +30,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@repo/design-system/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/design-system/components/ui/dialog";
+import { Label } from "@repo/design-system/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createVendor, updateVendor } from "../actions";
+import { createServiceCategory } from "../../settings/actions";
 import { toast } from "sonner";
 import { useTransition, useEffect, useState } from "react";
 import { Pencil, Trash2, X, Plus } from "lucide-react";
@@ -82,12 +90,15 @@ interface VendorSheetProps {
   serviceCategories: ServiceCategory[];
 }
 
-export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onSuccess, serviceCategories }: VendorSheetProps) {
+export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onSuccess, serviceCategories: initialServiceCategories }: VendorSheetProps) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState(initialMode);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [serviceComboboxOpen, setServiceComboboxOpen] = useState(false);
+  const [addServiceDialogOpen, setAddServiceDialogOpen] = useState(false);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>(initialServiceCategories);
 
   const isViewing = mode === "view";
   const isEditing = mode === "edit";
@@ -119,6 +130,38 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
       setMode(initialMode);
     }
   }, [vendor, open, initialMode, form]);
+
+  // Update local service categories when prop changes
+  useEffect(() => {
+    setServiceCategories(initialServiceCategories);
+  }, [initialServiceCategories]);
+
+  const handleAddService = () => {
+    startTransition(async () => {
+      if (!newServiceName.trim()) return;
+
+      const result = await createServiceCategory({ name: newServiceName.trim() });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.data) {
+        // Add to local state
+        setServiceCategories(prev => [...prev, result.data]);
+        
+        // Auto-select the newly created service
+        const currentServices = form.getValues("serviceIds") || [];
+        form.setValue("serviceIds", [...currentServices, result.data.id]);
+        
+        toast.success("Service category created and selected");
+        setNewServiceName("");
+        setAddServiceDialogOpen(false);
+        setServiceComboboxOpen(false);
+      }
+    });
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -307,6 +350,18 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
                                       </CommandItem>
                                     ))}
                                 </CommandGroup>
+                                <CommandGroup>
+                                  <CommandItem
+                                    onSelect={() => {
+                                      setServiceComboboxOpen(false);
+                                      setAddServiceDialogOpen(true);
+                                    }}
+                                    className="justify-center text-primary"
+                                  >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Add Service
+                                  </CommandItem>
+                                </CommandGroup>
                               </CommandList>
                             </Command>
                           </PopoverContent>
@@ -486,6 +541,50 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
           onSuccess={handleDelete}
         />
       )}
+
+      {/* Add Service Dialog */}
+      <Dialog open={addServiceDialogOpen} onOpenChange={setAddServiceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Service Category</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddService();
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="new-service-name">Service Name</Label>
+              <Input
+                id="new-service-name"
+                value={newServiceName}
+                onChange={(e) => setNewServiceName(e.target.value)}
+                placeholder="e.g., Wedding Planning"
+                disabled={isPending}
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setNewServiceName("");
+                  setAddServiceDialogOpen(false);
+                }}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isPending || !newServiceName.trim()}>
+                {isPending ? "Creating..." : "Create"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
