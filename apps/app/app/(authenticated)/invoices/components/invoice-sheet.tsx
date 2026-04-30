@@ -54,6 +54,7 @@ import {
   CommandList,
 } from "@repo/design-system/components/ui/command";
 import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import Link from "next/link";
 import { createInvoice } from "../actions";
 import { getClients } from "../../clients/actions";
 import { getEvents } from "../../events/actions";
@@ -1007,7 +1008,9 @@ export function InvoiceSheet({
                       <div className="grid grid-cols-2 gap-3 md:col-span-3 md:grid-cols-2">
                         <div className="md:col-span-1">
                           <label className="text-sm font-medium">
-                            Rate ({currency.symbol})
+                            <Link href="/settings?tab=finance" className="hover:underline hover:text-primary">
+                              Rate ({currency.symbol})
+                            </Link>
                           </label>
                           <Input
                             type="number"

@@ -53,6 +53,7 @@ import {
   CommandSeparator,
 } from "@repo/design-system/components/ui/command";
 import { Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import Link from "next/link";
 import { createEstimate, updateEstimate } from "../actions";
 import { getClients } from "../../clients/actions";
 import { getLeads } from "../../leads/actions";
@@ -1009,7 +1010,11 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
 
                       <div className="grid grid-cols-2 gap-3 md:col-span-3 md:grid-cols-2">
                         <div className="md:col-span-1">
-                          <label className="text-sm font-medium">Rate ({currency.symbol})</label>
+                          <label className="text-sm font-medium">
+                            <Link href="/settings?tab=finance" className="hover:underline hover:text-primary">
+                              Rate ({currency.symbol})
+                            </Link>
+                          </label>
                           <Input 
                             type="number" 
                             min="0"
