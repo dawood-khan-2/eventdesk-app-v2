@@ -61,6 +61,9 @@ type NavItem = {
   }[];
 } | {
   type: "separator";
+} | {
+  type: "label";
+  title: string;
 };
 
 type SidebarData = {
@@ -82,6 +85,7 @@ const data: SidebarData = {
       icon: CalendarDaysIcon,
     },
     { type: "separator" },
+    { type: "label", title: "Create New" },
     {
       title: "Estimates",
       url: "/estimates",
@@ -181,6 +185,14 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
               {filteredNavItems.map((item, index) => {
                 if ("type" in item && item.type === "separator") {
                   return <SidebarSeparator key={`separator-${index}`} />;
+                }
+                
+                if ("type" in item && item.type === "label") {
+                  return (
+                    <div key={`label-${index}`} className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+                      {item.title}
+                    </div>
+                  );
                 }
                 
                 // Type assertion after checking it's not a separator
