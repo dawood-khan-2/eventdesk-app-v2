@@ -126,12 +126,6 @@ export default function EventsPage() {
     setIsSheetOpen(true);
   };
 
-  const handleEditClick = (event: any) => {
-    setSelectedEvent(event);
-    setSheetMode("edit");
-    setIsSheetOpen(true);
-  };
-
   const handleSheetSuccess = () => {
     setIsSheetOpen(false);
     setSelectedEvent(null);
@@ -190,7 +184,6 @@ export default function EventsPage() {
           events={events}
           isLoading={isPending}
           onEventClick={handleEventClick}
-          onEditClick={handleEditClick}
           userRole={userRole}
         />
 

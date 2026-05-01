@@ -32,6 +32,21 @@ import {
   type UpdateServiceCategoryInput,
 } from "../actions";
 
+const SAMPLE_CATEGORIES = [
+  "Venue & Infrastructure",
+  "Decor & Styling",
+  "Catering & Beverages",
+  "Entertainment & Artists",
+  "Photography & Videography",
+  "Audio-Visual & Production",
+  "Logistics & Transportation",
+  "Guest Management & Registration",
+  "Invitations & Communication",
+  "Gifting & Merchandise",
+  "Permissions, Security & Compliance",
+  "Post-Event Services",
+];
+
 type ServiceCategory = {
   id: string;
   name: string;
@@ -105,8 +120,48 @@ export function ServiceCategories({ categories }: ServiceCategoriesProps) {
     setIsEditDialogOpen(true);
   };
 
+  // Filter out sample categories that already exist
+  const availableSamples = SAMPLE_CATEGORIES.filter(
+    (sample) => !categories.some(
+      (cat) => cat.name.toLowerCase() === sample.toLowerCase()
+    )
+  );
+
+  const handleQuickAdd = (categoryName: string) => {
+    startTransition(async () => {
+      const result = await createServiceCategory({ name: categoryName });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(`"${categoryName}" added successfully`);
+    });
+  };
+
   return (
     <div className="space-y-4">
+      {/* Quick Add Sample Categories */}
+      {availableSamples.length > 0 && (
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Quick Add</Label>
+          <div className="flex flex-wrap gap-2">
+            {availableSamples.map((sample) => (
+              <Badge
+                key={sample}
+                variant="outline"
+                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                onClick={() => handleQuickAdd(sample)}
+              >
+                <PlusIcon className="mr-1 h-3 w-3" />
+                {sample}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Categories Display */}
       <div className="flex flex-wrap gap-2">
         {categories.map((category) => (

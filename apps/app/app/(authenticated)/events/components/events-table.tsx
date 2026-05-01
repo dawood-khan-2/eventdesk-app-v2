@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@repo/design-system/components/ui/table";
 import { Skeleton } from "@repo/design-system/components/ui/skeleton";
-import { Pencil, MoreVertical, ArrowRight } from "lucide-react";
+import { MoreVertical, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@repo/design-system/lib/utils";
 import { format, isPast, isFuture, isWithinInterval } from "date-fns";
@@ -28,7 +28,6 @@ interface EventsTableProps {
   events: any[];
   isLoading: boolean;
   onEventClick: (event: any) => void;
-  onEditClick: (event: any) => void;
   userRole?: string | null;
 }
 
@@ -50,7 +49,6 @@ export function EventsTable({
   events,
   isLoading,
   onEventClick,
-  onEditClick,
   userRole,
 }: EventsTableProps) {
   const router = useRouter();
@@ -154,17 +152,6 @@ export function EventsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {userRole !== "org:member" && (
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditClick(event);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
@@ -230,31 +217,17 @@ export function EventsTable({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      {userRole !== "org:member" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditClick(event);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/events/${event.id}`);
-                        }}
-                      >
-                        Manage
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground dark:border-primary/30 dark:text-primary dark:hover:bg-primary dark:hover:text-primary-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/events/${event.id}`);
+                      }}
+                    >
+                      Manage
+                    </Button>
                   </TableCell>
                 </TableRow>
               );
