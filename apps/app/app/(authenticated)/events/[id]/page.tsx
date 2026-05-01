@@ -2,7 +2,7 @@
 
 import { notFound, useParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
-import { getEvent, sendRegistrationLink, updateEvent } from "../actions";
+import { getEvent, sendRegistrationLink, updateEvent, generateRegistrationToken } from "../actions";
 import { getTasks, getItineraries, getGuests, sendGuestsList } from "./actions";
 import { getEstimates } from "../../estimates/actions";
 import { getInvoices } from "../../invoices/actions";
@@ -58,9 +58,10 @@ import {
 } from "@repo/design-system/components/ui/popover";
 import { Calendar } from "@repo/design-system/components/ui/calendar";
 import { toast } from "sonner";
-import { Plus, Search, Mail, CalendarIcon, Link, TableProperties } from "lucide-react";
+import { Plus, Search, Mail, CalendarIcon, Link, TableProperties, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@repo/design-system/lib/utils";
+import { env } from "@/env";
 
 export default function EventPage() {
   const params = useParams();
@@ -392,6 +393,28 @@ export default function EventPage() {
     }
   };
 
+  // Handle copy registration link
+  const handleCopyRegistrationLink = async () => {
+    try {
+      // Generate token
+      const tokenResult = await generateRegistrationToken(id);
+      if (tokenResult.error || !tokenResult.data) {
+        toast.error(tokenResult.error || "Failed to generate registration link");
+        return;
+      }
+
+      // Construct registration URL
+      const registrationUrl = `${env.NEXT_PUBLIC_APP_URL}/register/${id}?token=${tokenResult.data}`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(registrationUrl);
+      toast.success("Registration link copied to clipboard!");
+    } catch (error) {
+      console.error("Failed to copy registration link:", error);
+      toast.error("Failed to copy registration link");
+    }
+  };
+
   // Filter tasks by search query
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -452,8 +475,8 @@ export default function EventPage() {
           </div>
 
           <TabsContent value="guests" className="space-y-4 mt-6">
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 mb-4">
-              <div className="relative flex-1 sm:flex-initial sm:w-64">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-4">
+              <div className="relative sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
@@ -463,22 +486,32 @@ export default function EventPage() {
                   className="pl-9"
                 />
               </div>
-              <Button 
-                onClick={handleOpenRegistrationSettings} 
-                className="w-full sm:w-auto"
-                variant="outline"
-              >
-                <Link className="h-4 w-4 mr-2" />
-                Send Registration Link
-              </Button>
-              <Button 
-                onClick={() => setIsGuestsListDialogOpen(true)} 
-                className="w-full sm:w-auto"
-                variant="outline"
-              >
-                <TableProperties className="h-4 w-4 mr-2" />
-                Send Guests List
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button 
+                  onClick={handleCopyRegistrationLink} 
+                  className="w-full sm:w-auto"
+                  variant="outline"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Registration Link
+                </Button>
+                <Button 
+                  onClick={handleOpenRegistrationSettings} 
+                  className="w-full sm:w-auto"
+                  variant="outline"
+                >
+                  <Link className="h-4 w-4 mr-2" />
+                  Send Registration Link
+                </Button>
+                <Button 
+                  onClick={() => setIsGuestsListDialogOpen(true)} 
+                  className="w-full sm:w-auto"
+                  variant="outline"
+                >
+                  <TableProperties className="h-4 w-4 mr-2" />
+                  Send Guests List
+                </Button>
+              </div>
             </div>
             
             {isLoadingGuests ? (
