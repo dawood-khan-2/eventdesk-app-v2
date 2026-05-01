@@ -430,22 +430,113 @@ export default function EventPage() {
           userRole={userRole}
         />
         
-        <Tabs defaultValue="tasks" className="w-full">
+        <Tabs defaultValue={userRole !== "org:member" ? "guests" : "tasks"} className="w-full">
           <div className="overflow-x-auto">
             <TabsList className="inline-flex md:flex md:w-full h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
+              {userRole !== "org:member" && (
+                <>
+                  <TabsTrigger value="guests" className="whitespace-nowrap px-3 md:flex-1">Guests</TabsTrigger>
+                  <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
+                  <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
+                </>
+              )}
               <TabsTrigger value="tasks" className="whitespace-nowrap px-3 md:flex-1">Tasks</TabsTrigger>
               {userRole !== "org:member" && (
                 <>
                   <TabsTrigger value="itinerary" className="whitespace-nowrap px-3 md:flex-1">Itinerary</TabsTrigger>
-                  <TabsTrigger value="guests" className="whitespace-nowrap px-3 md:flex-1">Guests</TabsTrigger>
-                  <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
-                  <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
                   <TabsTrigger value="bills" className="whitespace-nowrap px-3 md:flex-1">Bills</TabsTrigger>
                   <TabsTrigger value="feedback" className="whitespace-nowrap px-3 md:flex-1">Feedback</TabsTrigger>
                 </>
               )}
             </TabsList>
           </div>
+
+          <TabsContent value="guests" className="space-y-4 mt-6">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 mb-4">
+              <div className="relative flex-1 sm:flex-initial sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search guests..."
+                  value={guestsSearchQuery}
+                  onChange={(e) => setGuestsSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button 
+                onClick={handleOpenRegistrationSettings} 
+                className="w-full sm:w-auto"
+                variant="outline"
+              >
+                <Link className="h-4 w-4 mr-2" />
+                Send Registration Link
+              </Button>
+              <Button 
+                onClick={() => setIsGuestsListDialogOpen(true)} 
+                className="w-full sm:w-auto"
+                variant="outline"
+              >
+                <TableProperties className="h-4 w-4 mr-2" />
+                Send Guests List
+              </Button>
+            </div>
+            
+            {isLoadingGuests ? (
+              <div className="rounded-lg border p-8">
+                <p className="text-sm text-muted-foreground">Loading guests...</p>
+              </div>
+            ) : (
+              <GuestsTable
+                guests={guests.filter(guest => 
+                  guest.name.toLowerCase().includes(guestsSearchQuery.toLowerCase()) ||
+                  guest.email.toLowerCase().includes(guestsSearchQuery.toLowerCase()) ||
+                  (guest.phone && guest.phone.toLowerCase().includes(guestsSearchQuery.toLowerCase()))
+                )}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="estimates" className="space-y-4 mt-6">
+            {event && (
+              <EstimatesClient
+                initialEstimates={estimates}
+                initialPage={1}
+                initialSearch=""
+                initialTotalPages={1}
+                eventId={id}
+                eventData={{
+                  id: event.id,
+                  clientId: event.clientId,
+                  name: event.name,
+                  venue: event.venue,
+                  startDate: event.startDate,
+                  endDate: event.endDate,
+                }}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="invoices" className="space-y-4 mt-6">
+            {event && (
+              <InvoicesClient
+                initialInvoices={invoices}
+                initialPage={1}
+                initialSearch=""
+                initialTotalPages={1}
+                initialCurrencyCode={currencyCode}
+                eventId={id}
+                hideEventColumn={true}
+                eventData={{
+                  id: event.id,
+                  clientId: event.clientId,
+                  name: event.name,
+                  venue: event.venue,
+                  startDate: event.startDate,
+                  endDate: event.endDate,
+                }}
+              />
+            )}
+          </TabsContent>
 
           <TabsContent value="tasks" className="space-y-4 mt-6">
             <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 mb-4">
@@ -554,93 +645,6 @@ export default function EventPage() {
                 eventStartDate={event?.startDate || new Date()}
                 eventEndDate={event?.endDate || new Date()}
                 onRefresh={() => setItinerariesRefreshKey(prev => prev + 1)}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="guests" className="space-y-4 mt-6">
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 mb-4">
-              <div className="relative flex-1 sm:flex-initial sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search guests..."
-                  value={guestsSearchQuery}
-                  onChange={(e) => setGuestsSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Button 
-                onClick={handleOpenRegistrationSettings} 
-                className="w-full sm:w-auto"
-                variant="outline"
-              >
-                <Link className="h-4 w-4 mr-2" />
-                Send Registration Link
-              </Button>
-              <Button 
-                onClick={() => setIsGuestsListDialogOpen(true)} 
-                className="w-full sm:w-auto"
-                variant="outline"
-              >
-                <TableProperties className="h-4 w-4 mr-2" />
-                Send Guests List
-              </Button>
-            </div>
-            
-            {isLoadingGuests ? (
-              <div className="rounded-lg border p-8">
-                <p className="text-sm text-muted-foreground">Loading guests...</p>
-              </div>
-            ) : (
-              <GuestsTable
-                guests={guests.filter(guest => 
-                  guest.name.toLowerCase().includes(guestsSearchQuery.toLowerCase()) ||
-                  guest.email.toLowerCase().includes(guestsSearchQuery.toLowerCase()) ||
-                  (guest.phone && guest.phone.toLowerCase().includes(guestsSearchQuery.toLowerCase()))
-                )}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="estimates" className="space-y-4 mt-6">
-            {event && (
-              <EstimatesClient
-                initialEstimates={estimates}
-                initialPage={1}
-                initialSearch=""
-                initialTotalPages={1}
-                eventId={id}
-                eventData={{
-                  id: event.id,
-                  clientId: event.clientId,
-                  name: event.name,
-                  venue: event.venue,
-                  startDate: event.startDate,
-                  endDate: event.endDate,
-                }}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="invoices" className="space-y-4 mt-6">
-            {event && (
-              <InvoicesClient
-                initialInvoices={invoices}
-                initialPage={1}
-                initialSearch=""
-                initialTotalPages={1}
-                initialCurrencyCode={currencyCode}
-                eventId={id}
-                hideEventColumn={true}
-                eventData={{
-                  id: event.id,
-                  clientId: event.clientId,
-                  name: event.name,
-                  venue: event.venue,
-                  startDate: event.startDate,
-                  endDate: event.endDate,
-                }}
               />
             )}
           </TabsContent>
