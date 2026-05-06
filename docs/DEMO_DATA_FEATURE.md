@@ -12,7 +12,7 @@ When enabled (default), users are prompted during onboarding to select their eve
 - **`apps/app/lib/seed-demo-data.ts`** - Core seeding utility with event-type-specific templates
 
 ### Modified Files
-- **`apps/app/app/(unauthenticated)/onboarding/page.tsx`** - Added event type selection UI and seeding logic with retry mechanism
+- **`apps/app/app/(unauthenticated)/organization-setup/page.tsx`** - Added event type selection UI and seeding logic with retry mechanism
 
 ## How to Enable
 
@@ -172,7 +172,7 @@ Organization
 
 1. **Enable feature flag** for your test user
 2. **Clear existing org memberships** (or use new account)
-3. **Navigate to onboarding:** `/onboarding`
+3. **Navigate to organization setup:** `/organization-setup`
 4. **Enter org name** and select event type
 5. **Click "Create organization"**
 6. **Verify:**

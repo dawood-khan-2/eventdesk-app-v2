@@ -24,12 +24,12 @@ const relaxedSecurityHeaders = securityMiddleware({
 export default authMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
 
-  // Allow static, ingest, and onboarding routes
+  // Allow static, ingest, and organization-setup routes
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/ingest") ||
-    pathname.startsWith("/onboarding")
+    pathname.startsWith("/organization-setup")
   ) {
     return securityHeaders();
   }
@@ -49,10 +49,10 @@ export default authMiddleware(async (auth, request) => {
 
   const session = await auth(); // call the function to get auth data
 
-  // If signed in but no active org, force onboarding
+  // If signed in but no active org, force organization setup
   if (session.userId && !session.orgId) {
     const url = request.nextUrl.clone();
-    url.pathname = "/onboarding";
+    url.pathname = "/organization-setup";
     url.search = "";
     return NextResponse.redirect(url);
   }
