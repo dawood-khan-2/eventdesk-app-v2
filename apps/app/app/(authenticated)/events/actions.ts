@@ -34,10 +34,10 @@ const createEventSchema = z.object({
   (data) => {
     const start = new Date(data.startDate);
     const end = new Date(data.endDate);
-    return start < end;
+    return start <= end;
   },
   {
-    message: "Start date must be before end date",
+    message: "End date must be after or equal to start date",
     path: ["endDate"],
   }
 ).refine(
@@ -67,12 +67,12 @@ const updateEventSchema = z.object({
     if (data.startDate && data.endDate) {
       const start = new Date(data.startDate);
       const end = new Date(data.endDate);
-      return start < end;
+      return start <= end;
     }
     return true;
   },
   {
-    message: "Start date must be before end date",
+    message: "End date must be after or equal to start date",
     path: ["endDate"],
   }
 );
