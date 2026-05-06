@@ -194,9 +194,9 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         setVenue("");
         setDescription("");
         setStartDate(undefined);
-        setStartTime("");
+        setStartTime("00:00");
         setEndDate(undefined);
-        setEndTime("");
+        setEndTime("00:00");
         setMaxGuests("");
         setRegistrationEndDate(undefined);
         setRegistrationEndTime("");
@@ -264,28 +264,32 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
       return;
     }
     
-    if (!startDate || !startTime) {
-      toast.error("Start date and time are required");
+    if (!startDate) {
+      toast.error("Start date is required");
       return;
     }
     
-    if (!endDate || !endTime) {
-      toast.error("End date and time are required");
+    if (!endDate) {
+      toast.error("End date is required");
       return;
     }
+    
+    // Use default time in create mode if not provided
+    const finalStartTime = startTime || "00:00";
+    const finalEndTime = endTime || "00:00";
 
     // Combine date and time
     const startDateTime = new Date(startDate);
-    const [startHour, startMinute] = startTime.split(":");
+    const [startHour, startMinute] = finalStartTime.split(":");
     startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
     
     const endDateTime = new Date(endDate);
-    const [endHour, endMinute] = endTime.split(":");
+    const [endHour, endMinute] = finalEndTime.split(":");
     endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
 
     // Validate dates
-    if (startDateTime >= endDateTime) {
-      toast.error("End date/time must be after start date/time");
+    if (startDateTime > endDateTime) {
+      toast.error("End date/time must be after or equal to start date/time");
       return;
     }
 
@@ -709,16 +713,18 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                 </Popover>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Start Time *</Label>
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  disabled={isViewing}
-                />
-              </div>
+              {!isCreating && (
+                <div className="space-y-2">
+                  <Label htmlFor="startTime">Start Time *</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    disabled={isViewing}
+                  />
+                </div>
+              )}
             </div>
 
             {/* End Date & Time */}
@@ -750,16 +756,18 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                 </Popover>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="endTime">End Time *</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  disabled={isViewing}
-                />
-              </div>
+              {!isCreating && (
+                <div className="space-y-2">
+                  <Label htmlFor="endTime">End Time *</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    disabled={isViewing}
+                  />
+                </div>
+              )}
             </div>
 
             {event && (
