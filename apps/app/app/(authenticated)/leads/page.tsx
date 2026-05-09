@@ -39,6 +39,8 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function LeadsPage() {
+  const timestamp = Date.now();
+  console.log(`[${timestamp}] LeadsPage RENDER`);
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -54,8 +56,14 @@ export default function LeadsPage() {
 
   // Load leads and stats on mount
   useEffect(() => {
+    const ts = Date.now();
+    console.log(`[${ts}] LeadsPage useEffect[mount] - Loading leads and stats`);
     loadLeads();
     loadStats();
+    
+    return () => {
+      console.log(`[${Date.now()}] LeadsPage useEffect[mount] CLEANUP - Component unmounting!`);
+    };
   }, []);
 
   // Reload leads when debounced search query or status changes
@@ -159,7 +167,9 @@ export default function LeadsPage() {
               setSelectedLead(null);
               setSheetMode("create");
               setIsSheetOpen(true);
-            }}>
+            }}
+            data-tour="create-lead-button"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Lead
             </Button>

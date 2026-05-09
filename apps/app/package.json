@@ -13,6 +13,8 @@
   "dependencies": {
     "@calcom/embed-react": "^1.5.3",
     "@hcaptcha/react-hcaptcha": "^1.11.0",
+    "@onboardjs/core": "^1.0.0-rc.3",
+    "@onboardjs/react": "^1.0.0-rc.3",
     "@repo/analytics": "*",
     "@repo/auth": "*",
     "@repo/collaboration": "*",
