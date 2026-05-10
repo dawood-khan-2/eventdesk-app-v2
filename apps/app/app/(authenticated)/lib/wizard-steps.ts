@@ -188,12 +188,11 @@ export const wizardSteps: OnboardingStep[] = [
     id: "navigate-estimates",
     component: WaitForEstimateStep,
     payload: {
-      title: "Create an Estimate (Optional)",
+      title: "Create an Estimate",
       description: "Estimates help you quote clients. Navigate to Estimates to create one.",
       type: "spotlight",
       element: '[data-tour="estimates"]',
       spotlightSide: "right",
-      canSkip: true,
     } as WizardStepPayload,
     nextStep: "spotlight-estimate-button",
   },
@@ -206,7 +205,6 @@ export const wizardSteps: OnboardingStep[] = [
       type: "spotlight",
       element: '[data-tour="create-estimate-button"]',
       spotlightSide: "bottom",
-      canSkip: true,
     } as WizardStepPayload,
     nextStep: "wait-estimate",
   },
@@ -215,9 +213,8 @@ export const wizardSteps: OnboardingStep[] = [
     component: WaitForEstimateStep,
     payload: {
       title: "Create Your First Estimate",
-      description: "Add line items and pricing. Or skip this step if you prefer.",
+      description: "Add line items and pricing to complete your estimate.",
       type: "wait-action",
-      canSkip: true,
     } as WizardStepPayload,
     nextStep: "navigate-dashboard",
   },
@@ -261,10 +258,15 @@ export const wizardSteps: OnboardingStep[] = [
 
 /**
  * Helper to get current step number from step ID
+ * Returns step number excluding welcome (step 0) and completion (step 17)
+ * So navigate-leads becomes step 1, completion is step 15
  */
 export function getStepNumber(stepId: string): number {
   const index = WIZARD_STEP_IDS.findIndex((id) => id === stepId);
-  return index === -1 ? 0 : index + 1;
+  if (index === -1) return 0;
+  // Subtract 1 because welcome (index 0) is not counted in display
+  // So index 1 (navigate-leads) becomes step 1, index 2 becomes step 2, etc.
+  return index;
 }
 
 /**

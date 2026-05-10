@@ -1,0 +1,71 @@
+/**
+ * Mobile-specific styles for driver.js spotlight wizard
+ * Optimizes popovers and spotlight elements for small screens
+ */
+
+/* Mobile popover sizing and spacing */
+@media (max-width: 639px) {
+  .driver-popover {
+    @apply max-w-[calc(100vw-2rem)] p-4;
+  }
+
+  .driver-popover-title {
+    @apply text-base font-semibold;
+  }
+
+  .driver-popover-description {
+    @apply text-sm;
+  }
+
+  .driver-popover-footer {
+    @apply flex-col gap-2;
+  }
+
+  .driver-popover-footer button {
+    @apply w-full h-11;
+  }
+
+  /* Reduce spotlight padding on mobile */
+  .driver-active-element {
+    @apply !p-2;
+  }
+}
+
+/* Desktop (sm and up) - keep default driver.js styles */
+@media (min-width: 640px) {
+  .driver-popover {
+    @apply max-w-sm p-6;
+  }
+}
+
+/* Custom mobile popover class for wizard */
+.wizard-spotlight-mobile.driver-popover {
+  @apply max-w-[calc(100vw-2rem)] p-4 rounded-lg;
+}
+
+.wizard-spotlight-mobile .driver-popover-title {
+  @apply text-base font-semibold mb-2;
+}
+
+.wizard-spotlight-mobile .driver-popover-description {
+  @apply text-sm leading-relaxed;
+}
+
+/* Desktop popover class */
+.wizard-spotlight-desktop.driver-popover {
+  @apply max-w-sm p-6;
+}
+
+/* Ensure spotlight doesn't cause horizontal scroll */
+.driver-active-element {
+  @apply max-w-full;
+}
+
+/* Mobile-specific positioning adjustments */
+@media (max-width: 639px) {
+  .driver-popover[data-side="left"],
+  .driver-popover[data-side="right"] {
+    /* Convert side popovers to top/bottom on mobile */
+    @apply left-4 right-4;
+  }
+}

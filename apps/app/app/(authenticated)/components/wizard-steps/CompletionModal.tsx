@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useOnboarding } from "@onboardjs/react";
+import { useIsMobile } from "@repo/design-system/hooks/use-mobile";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@repo/design-system/components/ui/dialog";
 import { completeWizard } from "../../lib/wizard-actions";
@@ -11,6 +12,7 @@ import Link from "next/link";
 
 export function CompletionModal() {
   const { state } = useOnboarding();
+  const isMobile = useIsMobile();
 
   // Trigger big confetti celebration on mount
   useEffect(() => {
@@ -49,56 +51,58 @@ export function CompletionModal() {
 
   return (
     <Dialog open={true}>
-      <DialogContent className="sm:max-w-[550px]" showCloseButton={false}>
+      <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-[550px] p-4 sm:p-6" showCloseButton={false}>
         <DialogHeader>
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center">
-              <CheckCircle2 className="w-12 h-12 text-green-500" />
+          <div className="flex items-center justify-center mb-3 sm:mb-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-500/10 flex items-center justify-center">
+              <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12 text-green-500" />
             </div>
           </div>
-          <DialogTitle className="text-center text-3xl">You're All Set! 🎊</DialogTitle>
+          <DialogTitle className="text-center text-2xl sm:text-3xl">You're All Set! 🎊</DialogTitle>
         </DialogHeader>
-        <div className="text-center text-base pt-4 space-y-4 text-muted-foreground">
-          <p>
-            Congratulations! You've successfully completed the onboarding tour and created:
-          </p>
-          <ul className="text-left space-y-2 bg-muted p-4 rounded-lg max-w-md mx-auto">
+        <div className="text-center text-sm sm:text-base pt-3 sm:pt-4 space-y-3 sm:space-y-4 text-muted-foreground">
+          {!isMobile && (
+            <p>
+              Congratulations! You've successfully completed the onboarding tour and created:
+            </p>
+          )}
+          <ul className="text-left space-y-2 bg-muted p-3 sm:p-4 rounded-lg max-w-[calc(100%-1rem)] sm:max-w-md mx-auto">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>Your first lead</span>
+              <span className="text-sm">Your first lead</span>
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>Your first event</span>
+              <span className="text-sm">Your first event</span>
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>Your first task</span>
+              <span className="text-sm">Your first task</span>
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>Explored your dashboard</span>
+              <span className="text-sm">Explored your dashboard</span>
             </li>
           </ul>
-          <p className="text-muted-foreground">
-            You're ready to grow your event business with EventDesk!
+          <p className="text-muted-foreground text-sm">
+            You're ready to grow your event business!
           </p>
         </div>
-        <DialogFooter className="flex-col sm:flex-col gap-3 mt-6">
-          <Button onClick={handleComplete} size="lg" className="w-full">
+        <DialogFooter className="flex-col sm:flex-col gap-3 mt-4 sm:mt-6">
+          <Button onClick={handleComplete} size="lg" className="w-full h-12 sm:h-10">
             Start Using EventDesk
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
-          <div className="flex flex-col sm:flex-row gap-2 w-full text-sm text-center">
-            <Link href="/settings/members" className="text-muted-foreground hover:text-foreground transition-colors">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full text-sm text-center">
+            <Link href="/settings/members" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Invite your team
             </Link>
             <span className="hidden sm:inline text-muted-foreground">•</span>
-            <Link href="/support" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/support" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Get support
             </Link>
             <span className="hidden sm:inline text-muted-foreground">•</span>
-            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Customize settings
             </Link>
           </div>

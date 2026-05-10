@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOnboarding } from "@onboardjs/react";
+import { useIsMobile } from "@repo/design-system/hooks/use-mobile";
 import { Card } from "@repo/design-system/components/ui/card";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Progress } from "@repo/design-system/components/ui/progress";
@@ -10,79 +11,138 @@ import { resetWizard } from "../lib/wizard-actions";
 import { WIZARD_STEP_IDS, getStepNumber, type WizardStepPayload } from "../lib/wizard-steps";
 import { toast } from "sonner";
 
-export function WizardSidebar() {
-  const { state, next } = useOnboarding();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+interface WizardSidebarProps {
+  stepNumber: number;
+  totalSteps: number;
+  progressPercentage: number;
+  payload: WizardStepPayload | undefined;
+  isWaitingStep: boolean;
+  canSkip: boolean;
+  isExiting: boolean;
+  isCollapsed: boolean;
+  onCollapse: (collapsed: boolean) => void;
+  onExit: () => void;
+  onSkip: () => void;
+}
 
-  // Detect when sheets/dialogs are open to reposition sidebar
-  useEffect(() => {
-    const checkForOpenSheets = () => {
-      // Check for open Sheet components (they have data-state="open")
-      const openSheet = document.querySelector('[data-state="open"][role="dialog"]');
-      setIsSheetOpen(!!openSheet);
-    };
-
-    // Check immediately
-    checkForOpenSheets();
-
-    // Watch for DOM changes (sheets opening/closing)
-    const observer = new MutationObserver(checkForOpenSheets);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["data-state"],
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-  if (!state?.currentStep) {
-    return null;
-  }
-
-  const payload = state.currentStep.payload as WizardStepPayload | undefined;
-  const currentStepId = state.currentStep.id as string;
-  const stepNumber = getStepNumber(currentStepId);
-  const totalSteps = WIZARD_STEP_IDS.length;
-  const progressPercentage = (stepNumber / totalSteps) * 100;
-
-  const isWaitingStep = payload?.type === "wait-action";
-  const isModalStep = payload?.type === "modal";
-  const canSkip = payload?.canSkip ?? false;
-
-  // Hide sidebar for modal steps (they're full-screen)
-  if (isModalStep) {
-    return null;
-  }
-
-  const handleExit = async () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to skip the tour? You can restart it later from Settings."
+/**
+ * Mobile banner component - horizontal layout at top of screen
+ */
+function MobileBanner({
+  stepNumber,
+  totalSteps,
+  progressPercentage,
+  payload,
+  canSkip,
+  isExiting,
+  isCollapsed,
+  onCollapse,
+  onExit,
+  onSkip,
+}: WizardSidebarProps) {
+  if (isCollapsed) {
+    return (
+      <div className="fixed top-0 left-0 right-0 z-[60] bg-background/95 backdrop-blur-sm border-b shadow-sm">
+        <button
+          onClick={() => onCollapse(false)}
+          className="w-full h-12 px-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+        >
+          <span className="text-sm font-medium">
+            Tour: Step {stepNumber}/{totalSteps}
+          </span>
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      </div>
     );
+  }
 
-    if (confirmed) {
-      setIsExiting(true);
-      const result = await resetWizard();
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[60] bg-background/95 backdrop-blur-sm border-b shadow-lg">
+      {/* Main banner content */}
+      <div className="px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: Status indicator and title */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold truncate">
+                {payload?.title || "Loading..."}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Step {stepNumber} of {totalSteps}
+              </p>
+            </div>
+          </div>
 
-      if (result.success) {
-        toast.success("Tour skipped. You can restart it anytime from Settings.");
-        // Page will reload due to revalidatePath
-      } else {
-        toast.error("Failed to exit tour");
-        setIsExiting(false);
-      }
-    }
-  };
+          {/* Right: Action buttons */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {canSkip && (
+              <Button
+                onClick={onSkip}
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11"
+                title="Skip this step"
+              >
+                <SkipForward className="w-4 h-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11"
+              onClick={() => onCollapse(true)}
+              title="Minimize"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11"
+              onClick={onExit}
+              disabled={isExiting}
+              title="Exit tour"
+            >
+              {isExiting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <X className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
 
+      {/* Progress bar at bottom */}
+      <Progress value={progressPercentage} className="h-1 rounded-none" />
+    </div>
+  );
+}
+
+/**
+ * Desktop card component - floating card at bottom right
+ */
+function DesktopCard({
+  stepNumber,
+  totalSteps,
+  progressPercentage,
+  payload,
+  isWaitingStep,
+  canSkip,
+  isExiting,
+  isCollapsed,
+  isSheetOpen,
+  onCollapse,
+  onExit,
+  onSkip,
+}: WizardSidebarProps & { isSheetOpen: boolean }) {
   if (isCollapsed) {
     return (
       <div className={`fixed bottom-6 z-[60] transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
         <Button
           size="lg"
-          onClick={() => setIsCollapsed(false)}
+          onClick={() => onCollapse(false)}
           className="shadow-lg h-14 px-6"
         >
           <span className="flex items-center gap-2">
@@ -108,7 +168,7 @@ export function WizardSidebar() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={() => setIsCollapsed(true)}
+              onClick={() => onCollapse(true)}
             >
               <ChevronDown className="w-4 h-4" />
             </Button>
@@ -116,7 +176,7 @@ export function WizardSidebar() {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={handleExit}
+              onClick={onExit}
               disabled={isExiting}
             >
               {isExiting ? (
@@ -158,7 +218,7 @@ export function WizardSidebar() {
         {/* Skip button for optional steps */}
         {canSkip && (
           <Button
-            onClick={() => next()}
+            onClick={onSkip}
             variant="outline"
             size="sm"
             className="mt-3 w-full"
@@ -170,4 +230,98 @@ export function WizardSidebar() {
       </div>
     </Card>
   );
+}
+
+/**
+ * Main WizardSidebar component - renders mobile banner or desktop card
+ */
+export function WizardSidebar() {
+  const { state, next } = useOnboarding();
+  const isMobile = useIsMobile();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  // Detect when sheets/dialogs are open to reposition sidebar
+  useEffect(() => {
+    const checkForOpenSheets = () => {
+      // Check for open Sheet components (they have data-state="open")
+      const openSheet = document.querySelector('[data-state="open"][role="dialog"]');
+      setIsSheetOpen(!!openSheet);
+    };
+
+    // Check immediately
+    checkForOpenSheets();
+
+    // Watch for DOM changes (sheets opening/closing)
+    const observer = new MutationObserver(checkForOpenSheets);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  if (!state?.currentStep) {
+    return null;
+  }
+
+  const payload = state.currentStep.payload as WizardStepPayload | undefined;
+  const currentStepId = state.currentStep.id as string;
+  const stepNumber = getStepNumber(currentStepId);
+  // Display 15 steps (excluding welcome and completion from the 17 total)
+  const totalSteps = WIZARD_STEP_IDS.length - 2;
+  const progressPercentage = (stepNumber / totalSteps) * 100;
+
+  const isWaitingStep = payload?.type === "wait-action";
+  const isModalStep = payload?.type === "modal";
+  const canSkip = payload?.canSkip ?? false;
+
+  // Hide sidebar for modal steps (they're full-screen)
+  if (isModalStep) {
+    return null;
+  }
+
+  const handleExit = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to skip the tour? You can restart it later from Settings."
+    );
+
+    if (confirmed) {
+      setIsExiting(true);
+      const result = await resetWizard();
+
+      if (result.success) {
+        toast.success("Tour skipped. You can restart it anytime from Settings.");
+        // Page will reload due to revalidatePath
+      } else {
+        toast.error("Failed to exit tour");
+        setIsExiting(false);
+      }
+    }
+  };
+
+  const sharedProps: WizardSidebarProps = {
+    stepNumber,
+    totalSteps,
+    progressPercentage,
+    payload,
+    isWaitingStep,
+    canSkip,
+    isExiting,
+    isCollapsed,
+    onCollapse: setIsCollapsed,
+    onExit: handleExit,
+    onSkip: () => next(),
+  };
+
+  // Render mobile banner or desktop card based on viewport
+  if (isMobile) {
+    return <MobileBanner {...sharedProps} />;
+  }
+
+  return <DesktopCard {...sharedProps} isSheetOpen={isSheetOpen} />;
 }

@@ -119,15 +119,15 @@ export function DashboardRevealTour() {
   // For the "navigate to dashboard" step, just show a redirect message
   if (!isTourStep) {
     return (
-      <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-[60]">
-        <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-6 max-w-sm pointer-events-auto">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-2xl">📊</span>
+      <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-[60] px-4">
+        <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-4 sm:p-6 max-w-[calc(100%-2rem)] sm:max-w-sm pointer-events-auto">
+          <div className="flex flex-col items-center gap-3 sm:gap-4 text-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-xl sm:text-2xl">📊</span>
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Let's See Your Dashboard!</h3>
-              <p className="text-sm text-muted-foreground mt-2">
+              <h3 className="font-semibold text-base sm:text-lg">Let's See Your Dashboard!</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2">
                 Time to see all your hard work visualized...
               </p>
             </div>

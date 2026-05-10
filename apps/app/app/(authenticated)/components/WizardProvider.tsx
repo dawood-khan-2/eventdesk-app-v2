@@ -4,6 +4,8 @@ import { useEffect, useCallback } from "react";
 import { OnboardingProvider, useOnboarding } from "@onboardjs/react";
 import { driver } from "driver.js";
 import type { DriveStep } from "driver.js";
+import { useIsMobile } from "@repo/design-system/hooks/use-mobile";
+import { useSidebar } from "@repo/design-system/components/ui/sidebar";
 import { wizardSteps, type WizardStepPayload } from "../lib/wizard-steps";
 import { updateWizardStep } from "../lib/wizard-actions";
 import { WizardSidebar } from "./WizardSidebar";
@@ -20,6 +22,8 @@ interface WizardProviderProps {
  */
 function WizardDriverIntegration() {
   const { state, next } = useOnboarding();
+  const isMobile = useIsMobile();
+  const sidebar = useSidebar();
 
   useEffect(() => {
     if (!state?.currentStep) {
@@ -41,6 +45,25 @@ function WizardDriverIntegration() {
 
     console.log("WizardDriverIntegration - Starting spotlight for element:", element);
 
+    // Check if this is a sidebar navigation element (not buttons or other page elements)
+    const sidebarNavElements = [
+      '[data-tour="dashboard"]',
+      '[data-tour="leads"]',
+      '[data-tour="events"]', 
+      '[data-tour="clients"]',
+      '[data-tour="vendors"]',
+      '[data-tour="estimates"]',
+      '[data-tour="settings"]',
+      '[data-tour="support"]'
+    ];
+    const isSidebarElement = sidebarNavElements.some(nav => element === nav);
+    
+    // On mobile, open sidebar if we're spotlighting a sidebar nav element
+    if (isMobile && isSidebarElement && !sidebar.openMobile) {
+      console.log("WizardDriverIntegration - Opening sidebar for mobile spotlight");
+      sidebar.setOpenMobile(true);
+    }
+
     // Wait for element to be in DOM, with retries
     let attempts = 0;
     const maxAttempts = 20;
@@ -52,11 +75,24 @@ function WizardDriverIntegration() {
       if (targetElement) {
         console.log("WizardDriverIntegration - Element found, starting driver.js");
         
-        // Create driver.js spotlight
+        // On mobile, close sidebar NOW if we're spotlighting a page element (sidebar was open from nav)
+        if (isMobile && !isSidebarElement && sidebar.openMobile) {
+          console.log("WizardDriverIntegration - Closing sidebar for page content spotlight");
+          sidebar.setOpenMobile(false);
+        }
+        
+        // Determine spotlight side based on mobile/desktop
+        let spotlightSide = payload.spotlightSide || "bottom";
+        // On mobile, prefer top/bottom over left/right for better fit
+        if (isMobile && (spotlightSide === "left" || spotlightSide === "right")) {
+          spotlightSide = "bottom";
+        }
+        
+        // Create driver.js spotlight with mobile-optimized config
         const driverObj = driver({
           showProgress: false,
           showButtons: [],  // No buttons, we control flow via sidebar/actions
-          popoverClass: "wizard-spotlight-popover",
+          popoverClass: isMobile ? "wizard-spotlight-mobile" : "wizard-spotlight-desktop",
           allowClose: false,  // Don't show close button
           animate: true,
           steps: [
@@ -65,7 +101,7 @@ function WizardDriverIntegration() {
               popover: {
                 title: payload.title,
                 description: payload.description || "",
-                side: payload.spotlightSide || "bottom",
+                side: spotlightSide,
                 showButtons: [],  // Ensure no buttons at step level too
               },
             } as DriveStep,
@@ -78,7 +114,7 @@ function WizardDriverIntegration() {
               const clickHandler = () => {
                 console.log("WizardDriverIntegration - Element clicked, closing spotlight");
                 driverObj.destroy();
-                // Note: Not calling next() here - let polling handle advancement
+                // Note: Not calling next() here - let step component handle advancement
               };
               
               targetEl.addEventListener("click", clickHandler, { once: true });
@@ -123,8 +159,26 @@ function WizardDriverIntegration() {
     return () => {
       if (interval) clearInterval(interval);
       if (driverObj) driverObj.destroy();
+      // Don't auto-close sidebar here - let step transitions handle it
     };
-  }, [state?.currentStep?.id]); // Removed 'next' - causes infinite render loops!
+  }, [state?.currentStep?.id, isMobile, sidebar]); // Added dependencies
+
+  // Separate effect to close sidebar when transitioning away from sidebar nav to non-spotlight steps
+  useEffect(() => {
+    if (!isMobile || !state?.currentStep) {
+      return;
+    }
+
+    const payload = state.currentStep.payload as WizardStepPayload | undefined;
+    const stepType = payload?.type;
+    
+    // If current step is NOT a spotlight type, close the sidebar if it's open
+    // This handles transitions from sidebar nav spotlights to tour/wait-action/modal steps
+    if (stepType !== "spotlight" && sidebar.openMobile) {
+      console.log("WizardDriverIntegration - Closing sidebar for non-spotlight step:", state.currentStep.id);
+      sidebar.setOpenMobile(false);
+    }
+  }, [state?.currentStep?.id, isMobile, sidebar]);
 
   return null;
 }
@@ -190,8 +244,8 @@ export function WizardProvider({ children, initialStep }: WizardProviderProps) {
       {/* Sync state to database */}
       <WizardStatePersistence />
 
-      {/* Render children (the actual app) */}
-      {children}
+      {/* Render children (the actual app) with mobile padding wrapper */}
+      <WizardChildrenWrapper>{children}</WizardChildrenWrapper>
     </OnboardingProvider>
   );
 }
@@ -203,4 +257,24 @@ function WizardStepRenderer() {
   const { renderStep, state } = useOnboarding();
   console.log("WizardStepRenderer - Current step:", state?.currentStep?.id);
   return <>{renderStep()}</>;
+}
+
+/**
+ * Wrapper for children that adds top padding on mobile when wizard is active
+ * This prevents the mobile banner from overlapping page content
+ */
+function WizardChildrenWrapper({ children }: { children: React.ReactNode }) {
+  const isMobile = useIsMobile();
+  const { state } = useOnboarding();
+  
+  // Only add padding if wizard is active and not on a modal step
+  const payload = state?.currentStep?.payload as WizardStepPayload | undefined;
+  const isModalStep = payload?.type === "modal";
+  const shouldAddPadding = isMobile && state?.currentStep && !isModalStep;
+  
+  return (
+    <div className={shouldAddPadding ? "pt-[53px]" : ""}>
+      {children}
+    </div>
+  );
 }
