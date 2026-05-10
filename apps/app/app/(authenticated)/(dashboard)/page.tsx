@@ -76,22 +76,22 @@ const App = async () => {
   }
 
   return (
-    <DashboardWrapper showWelcome={showWelcome}>
-      <Header page="Dashboard" pages={["Home"]}>
-        {env.LIVEBLOCKS_SECRET && (
-          <CollaborationProvider orgId={orgId}>
-            <AvatarStack />
-            <Cursors />
-          </CollaborationProvider>
-        )}
-      </Header>
-      {!hasData || !dashboardData ? (
-        <div className="flex flex-1 items-center justify-center p-6">
-          <p className="text-muted-foreground">No data to display.</p>
-        </div>
-      ) : (
-      <div className="flex flex-1 flex-col gap-6 p-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <DashboardWrapper 
+      showWelcome={showWelcome}
+      header={
+        <Header page="Dashboard" pages={["Home"]}>
+          {env.LIVEBLOCKS_SECRET && (
+            <CollaborationProvider orgId={orgId}>
+              <AvatarStack />
+              <Cursors />
+            </CollaborationProvider>
+          )}
+        </Header>
+      }
+    >
+      {dashboardData && (
+      <div className="flex flex-1 flex-col gap-6 p-6" data-tour="dashboard">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" data-tour="stats-overview">
           <StatCard
             title="Events this week"
             value={dashboardData.eventsThisWeek}
@@ -125,7 +125,7 @@ const App = async () => {
         </div>
 
         {/* Task Overview */}
-        <section>
+        <section data-tour="task-overview">
           <h2 className="text-lg font-semibold mb-4">Task Overview</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Open Tasks */}
@@ -235,7 +235,7 @@ const App = async () => {
         </section>
 
         {/* Finance Overview */}
-        <section>
+        <section data-tour="finance-overview">
           <h2 className="text-lg font-semibold mb-4">Finance Overview</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Top 5 Cost Categories */}
@@ -338,7 +338,7 @@ const App = async () => {
         </section>
 
         {/* Client Engagement & Lead Insights */}
-        <section>
+        <section data-tour="client-insights">
           <h2 className="text-lg font-semibold mb-4">Client Engagement & Lead Insights</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Leads Funnel */}

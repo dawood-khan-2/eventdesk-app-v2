@@ -463,7 +463,7 @@ export default function EventPage() {
                   <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
                 </>
               )}
-              <TabsTrigger value="tasks" className="whitespace-nowrap px-3 md:flex-1">Tasks</TabsTrigger>
+              <TabsTrigger value="tasks" className="whitespace-nowrap px-3 md:flex-1" data-tour="tasks-section">Tasks</TabsTrigger>
               {userRole !== "org:member" && (
                 <>
                   <TabsTrigger value="itinerary" className="whitespace-nowrap px-3 md:flex-1">Itinerary</TabsTrigger>
@@ -584,7 +584,7 @@ export default function EventPage() {
                 />
               </div>
               {/* org:member can create tasks */}
-              <Button onClick={() => setIsTaskSheetOpen(true)} className="w-full sm:w-auto">
+              <Button onClick={() => setIsTaskSheetOpen(true)} className="w-full sm:w-auto" data-tour="add-task-button">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Task
               </Button>

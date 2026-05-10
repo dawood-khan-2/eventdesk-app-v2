@@ -61,6 +61,9 @@ model Organization {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Onboarding wizard - tracks current step or "COMPLETED"
+  onboardingWizardStep String?
+
   // Relationships
   members     OrganizationMember[]
   leads       Lead[]

@@ -8,6 +8,8 @@ import { env } from "@/env";
 import { NotificationsProvider } from "./components/notifications-provider";
 import { GlobalSidebar } from "./components/sidebar";
 import { ExitFeedbackProvider } from "./components/exit-feedback-provider";
+import { WizardProvider } from "./components/WizardProvider";
+import { database } from "@repo/database";
 
 type AppLayoutProperties = {
   readonly children: ReactNode;
@@ -34,17 +36,27 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
     return redirectToSignIn();
   }
 
+  // Get wizard step from organization
+  const { orgId } = await auth();
+  const org = await database.organization.findUnique({
+    where: { clerkId: orgId || "" },
+    select: { onboardingWizardStep: true },
+  });
+  const wizardStep = org?.onboardingWizardStep || null;
+
   return (
     <>
       <NotificationsProvider userId={user.id}>
         <SidebarProvider suppressHydrationWarning>
           <GlobalSidebar>
-            {betaFeature && (
-              <div className="m-4 rounded-full bg-blue-500 p-1.5 text-center text-sm text-white">
-                Beta feature now available
-              </div>
-            )}
-            {children}
+            <WizardProvider initialStep={wizardStep}>
+              {betaFeature && (
+                <div className="m-4 rounded-full bg-blue-500 p-1.5 text-center text-sm text-white">
+                  Beta feature now available
+                </div>
+              )}
+              {children}
+            </WizardProvider>
           </GlobalSidebar>
         </SidebarProvider>
       </NotificationsProvider>
@@ -57,8 +69,11 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
         />
       )}
       
-      {/* Tawk.to Chat Widget - Authenticated routes only */}
-      {chatWidgetEnabled && tawkPropertyId && tawkWidgetId && (
+      {/* Tawk.to Chat Widget - Authenticated routes only, hidden during active onboarding */}
+      {chatWidgetEnabled && 
+       tawkPropertyId && 
+       tawkWidgetId && 
+       (wizardStep === "COMPLETED" || wizardStep === "DISMISSED") && (
         <Script id="tawk-to-chat" strategy="afterInteractive">
           {`
             var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();

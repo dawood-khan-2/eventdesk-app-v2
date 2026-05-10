@@ -156,7 +156,7 @@ export default function EventsPage() {
             {/* Hide Add Event button for org:member */}
             {userRole !== "org:member" && (
               <Button 
-                data-tour="create-button"
+                data-tour="create-event-button"
                 onClick={() => {
                   setSelectedEvent(null);
                   setSheetMode("create");

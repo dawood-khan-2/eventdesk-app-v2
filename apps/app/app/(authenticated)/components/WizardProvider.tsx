@@ -1,0 +1,280 @@
+"use client";
+
+import { useEffect, useCallback } from "react";
+import { OnboardingProvider, useOnboarding } from "@onboardjs/react";
+import { driver } from "driver.js";
+import type { DriveStep } from "driver.js";
+import { useIsMobile } from "@repo/design-system/hooks/use-mobile";
+import { useSidebar } from "@repo/design-system/components/ui/sidebar";
+import { wizardSteps, type WizardStepPayload } from "../lib/wizard-steps";
+import { updateWizardStep } from "../lib/wizard-actions";
+import { WizardSidebar } from "./WizardSidebar";
+import "driver.js/dist/driver.css";
+
+interface WizardProviderProps {
+  children: React.ReactNode;
+  initialStep: string | null;
+}
+
+/**
+ * Internal component that handles driver.js integration
+ * Must be inside OnboardingProvider to access useOnboarding hook
+ */
+function WizardDriverIntegration() {
+  const { state, next } = useOnboarding();
+  const isMobile = useIsMobile();
+  const sidebar = useSidebar();
+
+  useEffect(() => {
+    if (!state?.currentStep) {
+      return;
+    }
+
+    const payload = state.currentStep.payload as WizardStepPayload | undefined;
+    const stepType = payload?.type;
+
+    // Only handle spotlight steps with driver.js
+    if (stepType !== "spotlight") {
+      return;
+    }
+
+    const element = payload?.element;
+    if (!element) {
+      return;
+    }
+
+    console.log("WizardDriverIntegration - Starting spotlight for element:", element);
+
+    // Check if this is a sidebar navigation element (not buttons or other page elements)
+    const sidebarNavElements = [
+      '[data-tour="dashboard"]',
+      '[data-tour="leads"]',
+      '[data-tour="events"]', 
+      '[data-tour="clients"]',
+      '[data-tour="vendors"]',
+      '[data-tour="estimates"]',
+      '[data-tour="settings"]',
+      '[data-tour="support"]'
+    ];
+    const isSidebarElement = sidebarNavElements.some(nav => element === nav);
+    
+    // On mobile, open sidebar if we're spotlighting a sidebar nav element
+    if (isMobile && isSidebarElement && !sidebar.openMobile) {
+      console.log("WizardDriverIntegration - Opening sidebar for mobile spotlight");
+      sidebar.setOpenMobile(true);
+    }
+
+    // Wait for element to be in DOM, with retries
+    let attempts = 0;
+    const maxAttempts = 20;
+    const attemptDelay = 400;
+
+    const tryStartDriver = () => {
+      const targetElement = document.querySelector(element);
+      
+      if (targetElement) {
+        console.log("WizardDriverIntegration - Element found, starting driver.js");
+        
+        // On mobile, close sidebar NOW if we're spotlighting a page element (sidebar was open from nav)
+        if (isMobile && !isSidebarElement && sidebar.openMobile) {
+          console.log("WizardDriverIntegration - Closing sidebar for page content spotlight");
+          sidebar.setOpenMobile(false);
+        }
+        
+        // Determine spotlight side based on mobile/desktop
+        let spotlightSide = payload.spotlightSide || "bottom";
+        // On mobile, prefer top/bottom over left/right for better fit
+        if (isMobile && (spotlightSide === "left" || spotlightSide === "right")) {
+          spotlightSide = "bottom";
+        }
+        
+        // Create driver.js spotlight with mobile-optimized config
+        const driverObj = driver({
+          showProgress: false,
+          showButtons: [],  // No buttons, we control flow via sidebar/actions
+          popoverClass: isMobile ? "wizard-spotlight-mobile" : "wizard-spotlight-desktop",
+          allowClose: false,  // Don't show close button
+          animate: true,
+          steps: [
+            {
+              element,
+              popover: {
+                title: payload.title,
+                description: payload.description || "",
+                side: spotlightSide,
+                showButtons: [],  // Ensure no buttons at step level too
+              },
+            } as DriveStep,
+          ],
+          onHighlighted: (element) => {
+            // Add click listener to auto-close spotlight but DON'T advance yet
+            // Let polling detect when data is created, then advance
+            const targetEl = element as HTMLElement;
+            if (targetEl) {
+              const clickHandler = () => {
+                console.log("WizardDriverIntegration - Element clicked, closing spotlight");
+                driverObj.destroy();
+                // Note: Not calling next() here - let step component handle advancement
+              };
+              
+              targetEl.addEventListener("click", clickHandler, { once: true });
+            }
+          },
+        });
+
+        try {
+          driverObj.drive();
+        } catch (error) {
+          console.error("WizardDriverIntegration - Failed to start driver.js:", error);
+        }
+
+        return driverObj;
+      } else {
+        attempts++;
+        if (attempts < maxAttempts) {
+          console.log(`WizardDriverIntegration - Element not found yet (attempt ${attempts}/${maxAttempts}), retrying...`);
+          return null;
+        } else {
+          console.warn(`WizardDriverIntegration - Element "${element}" not found after ${maxAttempts} attempts`);
+          return null;
+        }
+      }
+    };
+
+    // Try immediately first
+    let driverObj = tryStartDriver();
+    
+    // If not found, retry with intervals
+    let interval: ReturnType<typeof setInterval> | undefined = undefined;
+    
+    if (!driverObj) {
+      interval = setInterval(() => {
+        driverObj = tryStartDriver();
+        if (driverObj || attempts >= maxAttempts) {
+          if (interval) clearInterval(interval);
+        }
+      }, attemptDelay);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+      if (driverObj) driverObj.destroy();
+      // Don't auto-close sidebar here - let step transitions handle it
+    };
+  }, [state?.currentStep?.id, isMobile, sidebar]); // Added dependencies
+
+  // Separate effect to close sidebar when transitioning away from sidebar nav to non-spotlight steps
+  useEffect(() => {
+    if (!isMobile || !state?.currentStep) {
+      return;
+    }
+
+    const payload = state.currentStep.payload as WizardStepPayload | undefined;
+    const stepType = payload?.type;
+    
+    // If current step is NOT a spotlight type, close the sidebar if it's open
+    // This handles transitions from sidebar nav spotlights to tour/wait-action/modal steps
+    if (stepType !== "spotlight" && sidebar.openMobile) {
+      console.log("WizardDriverIntegration - Closing sidebar for non-spotlight step:", state.currentStep.id);
+      sidebar.setOpenMobile(false);
+    }
+  }, [state?.currentStep?.id, isMobile, sidebar]);
+
+  return null;
+}
+
+/**
+ * Internal component that syncs wizard state to database
+ */
+/**
+ * Component that persists wizard state to database
+ * NOTE: We DON'T persist during active wizard to prevent render loops
+ * Only completeWizard() and resetWizard() update the database
+ * If user refreshes during wizard, they'll restart - acceptable tradeoff
+ */
+function WizardStatePersistence() {
+  // Persistence disabled during active wizard to prevent continuous re-renders
+  // The layout would re-fetch data after DB updates, causing render loops
+  // Users typically complete wizard in one session, so losing progress on refresh is acceptable
+  return null;
+}
+
+/**
+ * Main wizard provider component
+ * Wraps app content with OnboardJS and integrates driver.js for UI spotlights
+ */
+export function WizardProvider({ children, initialStep }: WizardProviderProps) {
+  const timestamp = Date.now();
+  console.log(`[${timestamp}] WizardProvider RENDER - initialStep:`, initialStep);
+  
+  // If wizard is completed or dismissed, don't render wizard UI
+  if (initialStep === "COMPLETED" || initialStep === "DISMISSED") {
+    console.log(`[${timestamp}] WizardProvider - Completed/dismissed, returning children only`);
+    return <>{children}</>;
+  }
+
+  // Use initialStep from server, defaulting to "welcome" for new users
+  // DON'T read localStorage in render - causes infinite loops!
+  // The debounced DB persistence handles saving state
+  const stepId = initialStep || "welcome";
+  console.log(`[${timestamp}] WizardProvider - stepId:`, stepId);
+
+  const handleFlowComplete = useCallback(async () => {
+    const ts = Date.now();
+    console.log(`[${ts}] WizardProvider - handleFlowComplete called`);
+    // This is called when user reaches the end of the wizard
+    // The CompleteModal component handles calling completeWizard()
+  }, []);
+
+  return (
+    <OnboardingProvider
+      steps={wizardSteps}
+      initialStepId={stepId}
+      onFlowComplete={handleFlowComplete}
+    >
+      {/* Render the current step component */}
+      <WizardStepRenderer />
+
+      {/* Show sidebar with progress */}
+      <WizardSidebar />
+
+      {/* Handle driver.js spotlights */}
+      <WizardDriverIntegration />
+
+      {/* Sync state to database */}
+      <WizardStatePersistence />
+
+      {/* Render children (the actual app) with mobile padding wrapper */}
+      <WizardChildrenWrapper>{children}</WizardChildrenWrapper>
+    </OnboardingProvider>
+  );
+}
+
+/**
+ * Helper component to render the current step
+ */
+function WizardStepRenderer() {
+  const { renderStep, state } = useOnboarding();
+  console.log("WizardStepRenderer - Current step:", state?.currentStep?.id);
+  return <>{renderStep()}</>;
+}
+
+/**
+ * Wrapper for children that adds top padding on mobile when wizard is active
+ * This prevents the mobile banner from overlapping page content
+ */
+function WizardChildrenWrapper({ children }: { children: React.ReactNode }) {
+  const isMobile = useIsMobile();
+  const { state } = useOnboarding();
+  
+  // Only add padding if wizard is active and not on a modal step
+  const payload = state?.currentStep?.payload as WizardStepPayload | undefined;
+  const isModalStep = payload?.type === "modal";
+  const shouldAddPadding = isMobile && state?.currentStep && !isModalStep;
+  
+  return (
+    <div className={shouldAddPadding ? "pt-[53px]" : ""}>
+      {children}
+    </div>
+  );
+}
