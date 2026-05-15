@@ -94,13 +94,13 @@ export function CompletionModal() {
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full text-sm text-center">
-            <Link href="/settings/members" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <Link href="/settings?tab=team" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Invite your team
             </Link>
             <span className="hidden sm:inline text-muted-foreground">•</span>
-            <Link href="/support" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <a href="https://event-desk.tawk.help/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Get support
-            </Link>
+            </a>
             <span className="hidden sm:inline text-muted-foreground">•</span>
             <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Customize settings
