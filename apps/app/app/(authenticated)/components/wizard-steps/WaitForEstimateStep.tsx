@@ -4,9 +4,7 @@ import { useEffect, useState } from "react";
 import { useOnboarding } from "@onboardjs/react";
 import { usePathname } from "next/navigation";
 import { useWizardPolling } from "../../lib/use-wizard-polling";
-import { Button } from "@repo/design-system/components/ui/button";
 import confetti from "canvas-confetti";
-import { Loader2, SkipForward } from "lucide-react";
 import type { WizardStepPayload } from "../../lib/wizard-steps";
 
 export function WaitForEstimateStep() {
@@ -15,15 +13,14 @@ export function WaitForEstimateStep() {
   const payload = state?.currentStep?.payload as WizardStepPayload | undefined;
   const stepId = state?.currentStep?.id;
   const isWaitingStep = payload?.type === "wait-action";
-  const canSkip = payload?.canSkip ?? false;
-  const isSpotlightStep = stepId === "spotlight-estimate-button";
+  const isEventButtonSpotlight = stepId === "spotlight-estimate-button-event";
 
   // Start polling from spotlight step (after delay) OR wait-action step
   const [delayedPollingEnabled, setDelayedPollingEnabled] = useState(false);
   
   useEffect(() => {
-    if (isSpotlightStep) {
-      console.log("WaitForEstimateStep - On spotlight step, will start polling after delay");
+    if (isEventButtonSpotlight) {
+      console.log("WaitForEstimateStep - On event button spotlight, will start polling after delay");
       const timer = setTimeout(() => {
         console.log("WaitForEstimateStep - Starting delayed polling");
         setDelayedPollingEnabled(true);
@@ -32,14 +29,46 @@ export function WaitForEstimateStep() {
     } else {
       setDelayedPollingEnabled(false);
     }
-  }, [isSpotlightStep]);
+  }, [isEventButtonSpotlight]);
   
   const shouldPoll = isWaitingStep || delayedPollingEnabled;
   const { isComplete } = useWizardPolling("estimate", shouldPoll);
 
-  // Auto-advance from spotlight-estimate-button when sheet opens
+  // Auto-advance from spotlight-estimates-tab when tab is clicked
   useEffect(() => {
-    if (stepId === "spotlight-estimate-button") {
+    if (stepId === "spotlight-estimates-tab") {
+      console.log("WaitForEstimateStep - On estimates tab spotlight, waiting for tab switch...");
+      
+      const checkInterval = setInterval(() => {
+        // Check if estimates tab is active
+        const estimatesTab = document.querySelector('[data-tour="estimates-tab"][data-state="active"]');
+        
+        if (estimatesTab) {
+          console.log("WaitForEstimateStep - Estimates tab activated, advancing to button spotlight");
+          clearInterval(checkInterval);
+          setTimeout(() => next(), 800);
+        }
+      }, 200);
+
+      // Cleanup after 15 seconds if tab never switches
+      const timeout = setTimeout(() => {
+        console.warn("WaitForEstimateStep - Tab not switched after timeout, advancing anyway");
+        clearInterval(checkInterval);
+        next();
+      }, 15000);
+
+      return () => {
+        clearInterval(checkInterval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [stepId]);
+
+  // Auto-advance from spotlight-estimate-button-event when sheet opens
+  useEffect(() => {
+    if (stepId === "spotlight-estimate-button-event") {
+      console.log("WaitForEstimateStep - On event button spotlight, waiting for sheet...");
+      
       // Wait for sheet to open after button click
       const checkInterval = setInterval(() => {
         const sheet = document.querySelector('[role="dialog"][data-state="open"]');
@@ -60,33 +89,7 @@ export function WaitForEstimateStep() {
         clearTimeout(timeout);
       };
     }
-  }, [stepId]); // Removed 'next' from dependencies
-
-  // Auto-advance from navigate-estimates step when user reaches /estimates page
-  useEffect(() => {
-    if (stepId === "navigate-estimates" && pathname === "/estimates") {
-      console.log("WaitForEstimateStep - User navigated to estimates page, waiting for button to render...");
-      
-      let attempts = 0;
-      const maxAttempts = 20;
-      const checkInterval = setInterval(() => {
-        attempts++;
-        const button = document.querySelector('[data-tour="create-estimate-button"]');
-        
-        if (button) {
-          console.log(`WaitForEstimateStep - Button found after ${attempts} attempts, advancing to spotlight`);
-          clearInterval(checkInterval);
-          setTimeout(() => next(), 800);
-        } else if (attempts >= maxAttempts) {
-          console.warn("WaitForEstimateStep - Button not found after max attempts, advancing anyway");
-          clearInterval(checkInterval);
-          next();
-        }
-      }, 200);
-      
-      return () => clearInterval(checkInterval);
-    }
-  }, [stepId, pathname]); // Removed 'next' - it's stable and including it causes loops
+  }, [stepId]);
 
   useEffect(() => {
     if (isComplete) {
@@ -101,11 +104,7 @@ export function WaitForEstimateStep() {
         next();
       }, 1500);
     }
-  }, [isComplete, isSpotlightStep]); // Removed 'next' from dependencies
-
-  const handleSkip = () => {
-    next(); // Skip to next step
-  };
+  }, [isComplete, isEventButtonSpotlight]);
 
   // No blocking overlay - sidebar shows the status
   // Skip button is shown in sidebar via canSkip flag

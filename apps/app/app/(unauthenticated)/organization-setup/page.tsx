@@ -9,8 +9,17 @@ import { Label } from "@repo/design-system/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/design-system/components/ui/card";
 import { Alert, AlertDescription } from "@repo/design-system/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@repo/design-system/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@repo/design-system/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { seedDemoData, type EventType } from "@/lib/seed-demo-data";
+import { formatCurrencyList } from "@repo/internationalization/currencies";
+import { updateFinanceSettings } from "../../(authenticated)/settings/actions";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -19,10 +28,14 @@ export default function OnboardingPage() {
 
   const [orgName, setOrgName] = useState("");
   const [eventType, setEventType] = useState<EventType>("MARRIAGE");
+  const [currencyCode, setCurrencyCode] = useState("USD");
   const [loading, setLoading] = useState(false);
   const [seedingProgress, setSeedingProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [orgCreated, setOrgCreated] = useState(false);
+
+  // Get available currencies
+  const currencies = useMemo(() => formatCurrencyList(), []);
 
   // Show event type selection - controlled by environment variable
   const showEventTypeSelection = process.env.NEXT_PUBLIC_ENABLE_DEMO_DATA !== "false";
@@ -57,6 +70,11 @@ export default function OnboardingPage() {
       return;
     }
 
+    if (!currencyCode && !orgCreated) {
+      setError("Please select a currency.");
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -67,10 +85,16 @@ export default function OnboardingPage() {
         await setActive({ organization: org });
         setOrgCreated(true);
         
-        // Wait for webhook to create internal org record (only needed after org creation)
-        if (showEventTypeSelection) {
-          setSeedingProgress("Setting up your workspace...");
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Wait for webhook to create internal org record
+        setSeedingProgress("Setting up your workspace...");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        
+        // Update currency in database
+        setSeedingProgress("Configuring settings...");
+        const currencyResult = await updateFinanceSettings({ currencyCode });
+        if (currencyResult.error) {
+          console.error("Failed to update currency:", currencyResult.error);
+          // Don't fail the entire flow if currency update fails - it can be changed later
         }
       }
 
@@ -145,6 +169,31 @@ export default function OnboardingPage() {
               disabled={loading || !isLoaded}
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="currency">
+              Default Currency <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={currencyCode}
+              onValueChange={setCurrencyCode}
+              disabled={loading}
+            >
+              <SelectTrigger id="currency">
+                <SelectValue placeholder="Select a currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {currencies.map((currency) => (
+                  <SelectItem key={currency.value} value={currency.value}>
+                    {currency.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              This will be used for all financial transactions
+            </p>
           </div>
 
           {showEventTypeSelection && (

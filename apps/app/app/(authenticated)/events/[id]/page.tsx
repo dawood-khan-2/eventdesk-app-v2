@@ -459,7 +459,7 @@ export default function EventPage() {
               {userRole !== "org:member" && (
                 <>
                   <TabsTrigger value="guests" className="whitespace-nowrap px-3 md:flex-1">Guests</TabsTrigger>
-                  <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1">Estimates</TabsTrigger>
+                  <TabsTrigger value="estimates" className="whitespace-nowrap px-3 md:flex-1" data-tour="estimates-tab">Estimates</TabsTrigger>
                   <TabsTrigger value="invoices" className="whitespace-nowrap px-3 md:flex-1">Invoices</TabsTrigger>
                 </>
               )}

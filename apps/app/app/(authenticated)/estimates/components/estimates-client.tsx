@@ -202,7 +202,7 @@ export function EstimatesClient({
             className="pl-9"
           />
         </div>
-        <Button onClick={handleCreateNew} data-tour="create-estimate-button">
+        <Button onClick={handleCreateNew} data-tour={eventId ? "create-estimate-button-event" : "create-estimate-button"}>
           <PlusIcon className="mr-2 h-4 w-4" />
           Add Estimate
         </Button>

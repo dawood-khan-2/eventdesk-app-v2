@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useOnboarding } from "@onboardjs/react";
 import { useIsMobile } from "@repo/design-system/hooks/use-mobile";
 import { Button } from "@repo/design-system/components/ui/button";
@@ -9,13 +9,24 @@ import { completeWizard } from "../../lib/wizard-actions";
 import confetti from "canvas-confetti";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { getCalApi } from "@calcom/embed-react";
 
 export function CompletionModal() {
   const { state } = useOnboarding();
   const isMobile = useIsMobile();
+  const [open, setOpen] = useState(true);
 
-  // Trigger big confetti celebration on mount
+  // Mark wizard as complete and trigger confetti celebration on mount
   useEffect(() => {
+    // Mark wizard as complete immediately when modal is shown
+    completeWizard();
+
+    // Initialize Cal.com embed for demo booking
+    (async function () {
+      const cal = await getCalApi({ namespace: "demo-of-eventdesk" });
+      cal("ui", { hideEventTypeDetails: false, layout: "month_view" });
+    })();
+
     // Multiple confetti bursts for celebration!
     const celebrate = () => {
       confetti({
@@ -44,13 +55,17 @@ export function CompletionModal() {
     celebrate();
   }, []);
 
-  const handleComplete = async () => {
-    await completeWizard();
-    // Dialog will close and wizard won't show again
+  const handleDismiss = () => {
+    setOpen(false);
+  };
+
+  const handleBookDemo = () => {
+    // Cal.com will open its modal, and we dismiss the completion modal
+    handleDismiss();
   };
 
   return (
-    <Dialog open={true}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-[550px] p-4 sm:p-6" showCloseButton={false}>
         <DialogHeader>
           <div className="flex items-center justify-center mb-3 sm:mb-4">
@@ -89,20 +104,26 @@ export function CompletionModal() {
           </p>
         </div>
         <DialogFooter className="flex-col sm:flex-col gap-3 mt-4 sm:mt-6">
-          <Button onClick={handleComplete} size="lg" className="w-full h-12 sm:h-10">
+          <Button onClick={handleDismiss} size="lg" className="w-full h-12 sm:h-10">
             Start Using EventDesk
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full text-sm text-center">
-            <Link href="/settings/members" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <Link href="/settings?tab=team" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Invite your team
             </Link>
             <span className="hidden sm:inline text-muted-foreground">•</span>
-            <Link href="/support" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <button
+              data-cal-namespace="demo-of-eventdesk"
+              data-cal-link="raja-ramachandran-br5zin/demo-of-eventdesk"
+              data-cal-config='{"layout":"month_view","useSlotsViewOnSmallScreen":true}'
+              onClick={handleBookDemo}
+              className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0 bg-transparent border-none cursor-pointer"
+            >
               Get support
-            </Link>
+            </button>
             <span className="hidden sm:inline text-muted-foreground">•</span>
-            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <Link href="/settings" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Customize settings
             </Link>
           </div>
