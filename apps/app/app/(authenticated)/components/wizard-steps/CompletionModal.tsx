@@ -9,6 +9,7 @@ import { completeWizard } from "../../lib/wizard-actions";
 import confetti from "canvas-confetti";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { getCalApi } from "@calcom/embed-react";
 
 export function CompletionModal() {
   const { state } = useOnboarding();
@@ -19,6 +20,12 @@ export function CompletionModal() {
   useEffect(() => {
     // Mark wizard as complete immediately when modal is shown
     completeWizard();
+
+    // Initialize Cal.com embed for demo booking
+    (async function () {
+      const cal = await getCalApi({ namespace: "demo-of-eventdesk" });
+      cal("ui", { hideEventTypeDetails: false, layout: "month_view" });
+    })();
 
     // Multiple confetti bursts for celebration!
     const celebrate = () => {
@@ -50,6 +57,11 @@ export function CompletionModal() {
 
   const handleDismiss = () => {
     setOpen(false);
+  };
+
+  const handleBookDemo = () => {
+    // Cal.com will open its modal, and we dismiss the completion modal
+    handleDismiss();
   };
 
   return (
@@ -101,9 +113,15 @@ export function CompletionModal() {
               Invite your team
             </Link>
             <span className="hidden sm:inline text-muted-foreground">•</span>
-            <a href="https://event-desk.tawk.help/" target="_blank" rel="noopener noreferrer" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <button
+              data-cal-namespace="demo-of-eventdesk"
+              data-cal-link="raja-ramachandran-br5zin/demo-of-eventdesk"
+              data-cal-config='{"layout":"month_view","useSlotsViewOnSmallScreen":true}'
+              onClick={handleBookDemo}
+              className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0 bg-transparent border-none cursor-pointer"
+            >
               Get support
-            </a>
+            </button>
             <span className="hidden sm:inline text-muted-foreground">•</span>
             <Link href="/settings" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Customize settings
