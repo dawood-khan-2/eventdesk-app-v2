@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useOnboarding } from "@onboardjs/react";
 import { useIsMobile } from "@repo/design-system/hooks/use-mobile";
 import { Button } from "@repo/design-system/components/ui/button";
@@ -13,9 +13,13 @@ import Link from "next/link";
 export function CompletionModal() {
   const { state } = useOnboarding();
   const isMobile = useIsMobile();
+  const [open, setOpen] = useState(true);
 
-  // Trigger big confetti celebration on mount
+  // Mark wizard as complete and trigger confetti celebration on mount
   useEffect(() => {
+    // Mark wizard as complete immediately when modal is shown
+    completeWizard();
+
     // Multiple confetti bursts for celebration!
     const celebrate = () => {
       confetti({
@@ -44,13 +48,12 @@ export function CompletionModal() {
     celebrate();
   }, []);
 
-  const handleComplete = async () => {
-    await completeWizard();
-    // Dialog will close and wizard won't show again
+  const handleDismiss = () => {
+    setOpen(false);
   };
 
   return (
-    <Dialog open={true}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-[550px] p-4 sm:p-6" showCloseButton={false}>
         <DialogHeader>
           <div className="flex items-center justify-center mb-3 sm:mb-4">
@@ -89,20 +92,20 @@ export function CompletionModal() {
           </p>
         </div>
         <DialogFooter className="flex-col sm:flex-col gap-3 mt-4 sm:mt-6">
-          <Button onClick={handleComplete} size="lg" className="w-full h-12 sm:h-10">
+          <Button onClick={handleDismiss} size="lg" className="w-full h-12 sm:h-10">
             Start Using EventDesk
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full text-sm text-center">
-            <Link href="/settings?tab=team" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <Link href="/settings?tab=team" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Invite your team
             </Link>
             <span className="hidden sm:inline text-muted-foreground">•</span>
-            <a href="https://event-desk.tawk.help/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <a href="https://event-desk.tawk.help/" target="_blank" rel="noopener noreferrer" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Get support
             </a>
             <span className="hidden sm:inline text-muted-foreground">•</span>
-            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+            <Link href="/settings" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Customize settings
             </Link>
           </div>
