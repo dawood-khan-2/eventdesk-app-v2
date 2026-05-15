@@ -37,7 +37,14 @@ export async function getWizardStatus(): Promise<WizardStatus> {
           prisma.lead.count(),
           prisma.event.count(),
           prisma.task.count(),
-          prisma.estimate.count(),
+          // For wizard flow, check if there's at least one estimate linked to an event
+          prisma.estimate.count({
+            where: {
+              eventId: {
+                not: null
+              }
+            }
+          }),
         ]);
         return [leads, events, tasks, estimates];
       });
