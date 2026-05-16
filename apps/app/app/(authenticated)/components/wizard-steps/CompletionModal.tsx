@@ -73,44 +73,48 @@ export function CompletionModal() {
               <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12 text-green-500" />
             </div>
           </div>
-          <DialogTitle className="text-center text-2xl sm:text-3xl">You're All Set! 🎊</DialogTitle>
+          <DialogTitle className="text-center text-2xl sm:text-3xl">You're Ready to Start Managing Events 🎊</DialogTitle>
         </DialogHeader>
         <div className="text-center text-sm sm:text-base pt-3 sm:pt-4 space-y-3 sm:space-y-4 text-muted-foreground">
           {!isMobile && (
             <p>
-              Congratulations! You've successfully completed the onboarding tour and created:
+              You've successfully completed your first workflow in EventDesk:
             </p>
           )}
           <ul className="text-left space-y-2 bg-muted p-3 sm:p-4 rounded-lg max-w-[calc(100%-1rem)] sm:max-w-md mx-auto">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span className="text-sm">Your first lead</span>
+              <span className="text-sm">Captured your first enquiry</span>
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span className="text-sm">Your first event</span>
+              <span className="text-sm">Created your first event</span>
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span className="text-sm">Your first task</span>
+              <span className="text-sm">Added your first task</span>
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span className="text-sm">Explored your dashboard</span>
+              <span className="text-sm">{isMobile ? "Explored your dashboard" : "Explored your business dashboard"}</span>
             </li>
           </ul>
           <p className="text-muted-foreground text-sm">
-            You're ready to grow your event business!
+            {isMobile ? "You're all set to start managing real events 🚀" : "Everything is now connected and ready for real clients and events 🚀"}
           </p>
         </div>
         <DialogFooter className="flex-col sm:flex-col gap-3 mt-4 sm:mt-6">
           <Button onClick={handleDismiss} size="lg" className="w-full h-12 sm:h-10">
-            Start Using EventDesk
+            Start Managing Events
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full text-sm text-center">
             <Link href="/settings?tab=team" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
               Invite your team
+            </Link>
+            <span className="hidden sm:inline text-muted-foreground">•</span>
+            <Link href="/settings" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
+              Customize workspace
             </Link>
             <span className="hidden sm:inline text-muted-foreground">•</span>
             <button
@@ -122,10 +126,6 @@ export function CompletionModal() {
             >
               Get support
             </button>
-            <span className="hidden sm:inline text-muted-foreground">•</span>
-            <Link href="/settings" onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0">
-              Customize settings
-            </Link>
           </div>
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useOnboarding } from "@onboardjs/react";
 import { usePathname } from "next/navigation";
 import { useWizardPolling } from "../../lib/use-wizard-polling";
@@ -16,6 +16,12 @@ export function WaitForLeadStep() {
   const stepId = state?.currentStep?.id;
   const isWaitingStep = payload?.type === "wait-action";
   const isSpotlightStep = stepId === "spotlight-lead-button";
+  
+  // Use ref to avoid stale closure issues with next()
+  const nextRef = useRef(next);
+  useEffect(() => {
+    nextRef.current = next;
+  }, [next]);
   
   console.log(`[${timestamp}] WaitForLeadStep RENDER - stepId:`, stepId, "pathname:", pathname);
 
@@ -42,13 +48,19 @@ export function WaitForLeadStep() {
   // Auto-advance from spotlight-lead-button when sheet opens
   useEffect(() => {
     if (stepId === "spotlight-lead-button") {
+      console.log("WaitForLeadStep - Watching for sheet to open...");
+      
       // Wait for sheet to open after button click
       const checkInterval = setInterval(() => {
-        const sheet = document.querySelector('[role="dialog"][data-state="open"]');
+        // Try multiple selectors to catch the sheet
+        const sheet = document.querySelector('[data-slot="sheet-content"][data-state="open"]') ||
+                     document.querySelector('[role="dialog"][data-state="open"]') ||
+                     document.querySelector('[data-state="open"][data-slot="sheet-content"]');
+        
         if (sheet) {
           console.log("WaitForLeadStep - Sheet opened, advancing to wait-lead");
           clearInterval(checkInterval);
-          setTimeout(() => next(), 500);
+          setTimeout(() => nextRef.current(), 500);
         }
       }, 200);
 
@@ -82,11 +94,11 @@ export function WaitForLeadStep() {
         if (button) {
           console.log(`WaitForLeadStep - Button found after ${attempts} attempts, advancing to spotlight`);
           clearInterval(checkInterval);
-          setTimeout(() => next(), 800);
+          setTimeout(() => nextRef.current(), 800);
         } else if (attempts >= maxAttempts) {
           console.warn("WaitForLeadStep - Button not found after max attempts, advancing anyway");
           clearInterval(checkInterval);
-          next();
+          nextRef.current();
         }
       }, 200);
       
@@ -110,7 +122,7 @@ export function WaitForLeadStep() {
 
       // Advance to next step after celebration
       setTimeout(() => {
-        next();
+        nextRef.current();
       }, 1500);
     }
   }, [isComplete, isSpotlightStep]); // Removed 'next' from dependencies
