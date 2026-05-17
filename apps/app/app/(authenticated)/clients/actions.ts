@@ -247,6 +247,7 @@ export async function getClientsStats() {
 
 /**
  * Convert a lead to a client
+ * Idempotent: If lead is already converted, returns existing client
  */
 export async function convertLeadToClient(leadId: string) {
   try {
@@ -265,6 +266,21 @@ export async function convertLeadToClient(leadId: string) {
 
     if (!lead) {
       return { error: "Lead not found" };
+    }
+
+    // Idempotency check: If lead is already converted, return existing client
+    if (lead.status === "CONVERTED") {
+      const existingClient = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+        return prisma.client.findFirst({
+          where: { leadId: leadId },
+        });
+      });
+
+      if (existingClient) {
+        return { data: existingClient };
+      }
+      // If lead is marked as CONVERTED but no client exists (data integrity issue),
+      // continue with conversion to fix the orphaned state
     }
 
     // Create client from lead data

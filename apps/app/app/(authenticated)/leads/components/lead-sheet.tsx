@@ -134,9 +134,15 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
 
   const onSubmit = (data: LeadFormValues) => {
     startTransition(async () => {
+      // When creating a lead, ensure CONVERTED status is not passed
+      // (This should not happen due to UI hiding, but adding safety check)
+      const submitData = lead 
+        ? data 
+        : { ...data, status: data.status === "CONVERTED" ? "NEW" : data.status };
+      
       const result = lead
-        ? await updateLead({ id: lead.id, ...data })
-        : await createLead(data);
+        ? await updateLead({ id: lead.id, ...submitData })
+        : await createLead(submitData as any);
 
       if (result.error) {
         toast.error(result.error);
@@ -270,10 +276,15 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
                         <SelectItem value="CONTACTED">Contacted</SelectItem>
                         <SelectItem value="PROPOSAL_SENT">Proposal Sent</SelectItem>
                         <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
-                        <SelectItem value="CONVERTED">Converted</SelectItem>
+                        {!isCreating && <SelectItem value="CONVERTED">Converted</SelectItem>}
                         <SelectItem value="LOST">Lost</SelectItem>
                       </SelectContent>
                     </Select>
+                    {isCreating && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Note: To mark a lead as converted, create a client instead or use the conversion action.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
