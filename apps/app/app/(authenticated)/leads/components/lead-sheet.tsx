@@ -299,7 +299,7 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
                     <FormControl>
                       <Textarea
                         placeholder="Additional notes..."
-                        className="min-h-[100px]"
+                        className="min-h-[100px] max-h-80"
                         {...field}
                         disabled={isViewing}
                       />
@@ -326,7 +326,7 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
                 </div>
               )}
 
-              <SheetFooter className="mt-6 flex-col gap-2 sm:flex-col">
+              <SheetFooter className="sticky bottom-0 mt-6 flex-col gap-2 bg-background border-t pt-4 sm:flex-col">
                 {isViewing && lead && (
                   <>
                     <div className="flex w-full gap-2">

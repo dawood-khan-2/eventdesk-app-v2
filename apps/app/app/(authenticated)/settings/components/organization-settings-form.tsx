@@ -63,6 +63,7 @@ export function OrganizationSettingsForm({
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           rows={4}
+          className="max-h-80"
         />
         <p className="text-sm text-muted-foreground">
           Your organization's physical address. This will appear on invoices and other documents.

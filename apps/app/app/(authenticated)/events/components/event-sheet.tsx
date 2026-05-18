@@ -622,7 +622,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
               <Textarea
                 id="description"
                 placeholder="Event details..."
-                className="min-h-[100px]"
+                className="min-h-[100px] max-h-80"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isViewing}
@@ -787,7 +787,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
               </div>
             )}
 
-            <SheetFooter className="mt-6 flex-col gap-2 sm:flex-col">
+            <SheetFooter className="sticky bottom-0 mt-6 flex-col gap-2 bg-background border-t pt-4 sm:flex-col">
               {isViewing && event && (
                 <>
                   <Button 

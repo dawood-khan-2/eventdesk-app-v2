@@ -452,7 +452,7 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
                     <FormControl>
                       <Textarea
                         placeholder="123 Main St, City, State, ZIP"
-                        className="min-h-[80px]"
+                        className="min-h-[80px] max-h-80"
                         {...field}
                         disabled={isViewing}
                       />
@@ -481,7 +481,7 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
                 </div>
               )}
 
-              <SheetFooter className="mt-6 flex-col gap-2 sm:flex-col">
+              <SheetFooter className="sticky bottom-0 mt-6 flex-col gap-2 bg-background border-t pt-4 sm:flex-col">
                 {isViewing && vendor && (
                   <>
                     <div className="flex w-full gap-2">

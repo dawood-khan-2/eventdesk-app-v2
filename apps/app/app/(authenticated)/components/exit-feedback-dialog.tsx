@@ -93,12 +93,12 @@ export function ExitFeedbackDialog({
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               rows={5}
-              className="resize-none"
+              className="resize-none max-h-80"
               disabled={isSubmitting}
             />
           </div>
         </div>
-        <DialogFooter className={triggerType === "manual" ? "sm:justify-end" : "sm:justify-between"}>
+        <DialogFooter className={triggerType === "manual" ? "sticky bottom-0 bg-background border-t pt-4 sm:justify-end" : "sticky bottom-0 bg-background border-t pt-4 sm:justify-between"}>
           {triggerType !== "manual" && (
             <Button
               type="button"
