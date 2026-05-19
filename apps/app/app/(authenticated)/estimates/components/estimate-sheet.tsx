@@ -465,8 +465,8 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
       <SheetContent 
         className="w-full sm:max-w-4xl overflow-y-auto"
         onInteractOutside={(e) => {
-          // Always prevent closing if the add service dialog is open
-          if (addServiceDialogOpen) {
+          // Prevent closing if any sub-dialog is open
+          if (createLeadDialogOpen || createClientDialogOpen || addServiceDialogOpen) {
             e.preventDefault();
             return;
           }

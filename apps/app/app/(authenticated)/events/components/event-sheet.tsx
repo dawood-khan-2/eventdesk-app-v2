@@ -376,6 +376,12 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
         <SheetContent 
           className="overflow-y-auto sm:max-w-xl"
           onInteractOutside={(e) => {
+            // Prevent closing if any sub-dialog is open
+            if (createClientDialogOpen || upgradeDialogOpen) {
+              e.preventDefault();
+              return;
+            }
+            
             // Prevent closing when clicking outside if form is dirty
             if (isDirty && (isCreating || isEditing)) {
               e.preventDefault();

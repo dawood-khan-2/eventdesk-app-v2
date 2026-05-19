@@ -253,8 +253,8 @@ export function VendorSheet({ open, onOpenChange, vendor, mode: initialMode, onS
         <SheetContent 
           className="overflow-y-auto sm:max-w-xl"
           onInteractOutside={(e) => {
-            // Always prevent closing if the add service dialog is open
-            if (addServiceDialogOpen) {
+            // Prevent closing if any sub-dialog is open
+            if (showDeleteDialog || addServiceDialogOpen) {
               e.preventDefault();
               return;
             }
