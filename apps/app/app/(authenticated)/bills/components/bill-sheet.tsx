@@ -408,10 +408,9 @@ export function BillSheet({
               return;
             }
             
-            // Prevent closing when clicking outside if form is dirty
+            // Prevent closing when clicking outside if form is dirty (no dialog, just prevent)
             if (form.formState.isDirty && (isCreating || isEditing)) {
               e.preventDefault();
-              setShowCancelConfirm(true);
             }
           }}
         >

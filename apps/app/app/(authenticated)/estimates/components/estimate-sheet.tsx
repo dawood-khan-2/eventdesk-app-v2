@@ -471,10 +471,9 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
             return;
           }
           
-          // Prevent closing when clicking outside if form is dirty
+          // Prevent closing when clicking outside if form is dirty (no dialog, just prevent)
           if (isDirty && (mode === "create" || mode === "edit")) {
             e.preventDefault();
-            setShowCancelConfirm(true);
           }
         }}
       >

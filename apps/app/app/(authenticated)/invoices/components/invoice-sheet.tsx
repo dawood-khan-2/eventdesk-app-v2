@@ -468,15 +468,15 @@ export function InvoiceSheet({
       <SheetContent 
         className="w-full sm:max-w-4xl overflow-y-auto"
         onInteractOutside={(e) => {
-          // Always prevent closing if the add service dialog is open
+          // Prevent closing if any sub-dialog is open
           if (addServiceDialogOpen) {
             e.preventDefault();
             return;
           }
           
+          // Prevent closing when clicking outside if form is dirty (no dialog, just prevent)
           if (isDirty && mode === "create") {
             e.preventDefault();
-            setShowCancelConfirm(true);
           }
         }}
       >

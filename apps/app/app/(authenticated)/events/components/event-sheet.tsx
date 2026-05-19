@@ -382,10 +382,9 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
               return;
             }
             
-            // Prevent closing when clicking outside if form is dirty
+            // Prevent closing when clicking outside if form is dirty (no dialog, just prevent)
             if (isDirty && (isCreating || isEditing)) {
               e.preventDefault();
-              setShowCancelConfirm(true);
             }
           }}
         >
