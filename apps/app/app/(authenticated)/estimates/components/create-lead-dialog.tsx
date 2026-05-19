@@ -45,7 +45,6 @@ const leadFormSchema = z.object({
     "CONTACTED",
     "PROPOSAL_SENT",
     "FOLLOW_UP",
-    "CONVERTED",
     "LOST",
   ]),
 });
@@ -214,7 +213,6 @@ export function CreateLeadDialog({
                         Proposal Sent
                       </SelectItem>
                       <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
-                      <SelectItem value="CONVERTED">Converted</SelectItem>
                       <SelectItem value="LOST">Lost</SelectItem>
                     </SelectContent>
                   </Select>

@@ -15,12 +15,19 @@ const createLeadSchema = z.object({
   phone: z.string().max(50).optional().or(z.literal("")),
   company: z.string().max(255).optional().or(z.literal("")),
   address: z.string().max(500).optional().or(z.literal("")),
-  status: z.enum(["NEW", "CONTACTED", "PROPOSAL_SENT", "FOLLOW_UP", "CONVERTED", "LOST"]).default("NEW"),
+  status: z.enum(["NEW", "CONTACTED", "PROPOSAL_SENT", "FOLLOW_UP", "LOST"]).default("NEW"),
   notes: z.string().optional().or(z.literal("")),
 });
 
-const updateLeadSchema = createLeadSchema.partial().extend({
+const updateLeadSchema = z.object({
   id: z.string().cuid(),
+  name: z.string().min(1, "Name is required").max(255).optional(),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  company: z.string().max(255).optional().or(z.literal("")),
+  address: z.string().max(500).optional().or(z.literal("")),
+  status: z.enum(["NEW", "CONTACTED", "PROPOSAL_SENT", "FOLLOW_UP", "CONVERTED", "LOST"]).optional(),
+  notes: z.string().optional().or(z.literal("")),
 });
 
 const searchLeadsSchema = z.object({
@@ -128,6 +135,7 @@ export async function getLead(id: string) {
 
 /**
  * Update a lead
+ * If status is changed to CONVERTED, automatically creates a client in a single transaction
  */
 export async function updateLead(data: z.infer<typeof updateLeadSchema>) {
   try {
@@ -137,7 +145,72 @@ export async function updateLead(data: z.infer<typeof updateLeadSchema>) {
 
     const { internalOrgId } = await getTenantContext();
 
-    // Update lead with tenant context (RLS ensures we can only update our own leads)
+    // Check if status is being changed to CONVERTED
+    if (updateData.status === "CONVERTED") {
+      // Perform entire conversion in a single transaction
+      const lead = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
+        // Get the lead with full data
+        const currentLead = await prisma.lead.findUnique({
+          where: { id },
+        });
+
+        if (!currentLead) {
+          throw new Error("Lead not found");
+        }
+
+        // If already converted, check for existing client (idempotency)
+        if (currentLead.status === "CONVERTED") {
+          const existingClient = await prisma.client.findFirst({
+            where: { leadId: id },
+          });
+
+          if (existingClient) {
+            // Already converted, just update other fields if any
+            if (Object.keys(updateData).length > 1) {
+              return prisma.lead.update({
+                where: { id },
+                data: updateData,
+              });
+            }
+            return currentLead;
+          }
+          // If marked as CONVERTED but no client exists (orphaned state), continue with conversion
+        }
+
+        // Create client from lead data
+        const client = await prisma.client.create({
+          data: {
+            tenantId: internalOrgId,
+            leadId: id,
+            name: currentLead.name,
+            email: currentLead.email,
+            phone: currentLead.phone,
+            company: currentLead.company,
+            address: currentLead.address,
+            notes: currentLead.notes,
+          },
+        });
+
+        // Update all estimates with this leadId to point to the new client
+        await prisma.estimate.updateMany({
+          where: { leadId: id },
+          data: { clientId: client.id },
+        });
+
+        // Update lead to CONVERTED along with any other field updates
+        return prisma.lead.update({
+          where: { id },
+          data: { ...updateData, status: "CONVERTED" },
+        });
+      });
+
+      revalidatePath("/leads");
+      revalidatePath("/clients");
+      revalidatePath(`/leads/${id}`);
+      return { data: lead };
+    }
+
+    // Regular update (not converting to client)
     const lead = await multiTenantDb.forTenant(internalOrgId).run(async (prisma) => {
       return prisma.lead.update({
         where: { id },
@@ -153,6 +226,11 @@ export async function updateLead(data: z.infer<typeof updateLeadSchema>) {
     
     if (error instanceof z.ZodError) {
       return { error: error.issues[0]?.message ?? "Invalid input" };
+    }
+    
+    // Handle specific transaction errors
+    if (error instanceof Error) {
+      return { error: error.message };
     }
     
     return { error: "Failed to update lead" };

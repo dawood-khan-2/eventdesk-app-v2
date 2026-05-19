@@ -402,10 +402,15 @@ export function BillSheet({
         <SheetContent 
           className="overflow-y-auto sm:max-w-xl"
           onInteractOutside={(e) => {
-            // Prevent closing when clicking outside if form is dirty
+            // Prevent closing if any sub-dialog is open
+            if (showDeleteDialog) {
+              e.preventDefault();
+              return;
+            }
+            
+            // Prevent closing when clicking outside if form is dirty (no dialog, just prevent)
             if (form.formState.isDirty && (isCreating || isEditing)) {
               e.preventDefault();
-              setShowCancelConfirm(true);
             }
           }}
         >

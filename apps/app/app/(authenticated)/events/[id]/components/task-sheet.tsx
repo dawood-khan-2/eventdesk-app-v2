@@ -214,7 +214,7 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
             <Textarea
               id="description"
               placeholder="Task description..."
-              className="min-h-[100px]"
+              className="min-h-[100px] max-h-80"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -354,7 +354,7 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
             )}
           </div>
 
-          <SheetFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+          <SheetFooter className="sticky bottom-0 flex-col gap-2 bg-background border-t pt-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"

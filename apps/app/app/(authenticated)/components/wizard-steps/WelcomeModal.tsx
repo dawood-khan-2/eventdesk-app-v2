@@ -1,14 +1,12 @@
 "use client";
 
 import { useOnboarding } from "@onboardjs/react";
-import { useIsMobile } from "@repo/design-system/hooks/use-mobile";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@repo/design-system/components/ui/dialog";
 import { Sparkles } from "lucide-react";
 
 export function WelcomeModal() {
   const { next } = useOnboarding();
-  const isMobile = useIsMobile();
   console.log("WelcomeModal rendering");
 
   return (
@@ -20,24 +18,17 @@ export function WelcomeModal() {
               <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
           </div>
-          <DialogTitle className="text-center text-xl sm:text-2xl">Welcome to EventDesk! 🎉</DialogTitle>
+          <DialogTitle className="text-center text-xl sm:text-2xl">Welcome to EventDesk 🎉</DialogTitle>
           <DialogDescription className="text-center text-sm sm:text-base pt-2">
-            {isMobile ? (
-              <>
-                Let's take a quick tour to help you get started. You'll create <strong>real data</strong> you can use right away!
-              </>
-            ) : (
-              <>
-                Let's take a quick tour to help you get started. We'll guide you through creating your first lead, event, and task.
-                <br /><br />
-                This will only take a few minutes, and you'll be creating <strong>real data</strong> that you can use right away!
-              </>
-            )}
+            Let's set up your first event workflow together.
+            We'll guide you through capturing an enquiry, creating an event, adding tasks, and exploring how everything connects in one place.
+            <br /><br />
+            It only takes a few minutes—and everything you create will be real data you can continue working with later ✨
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="sm:justify-center mt-4">
           <Button onClick={() => next()} size="lg" className="w-full sm:w-auto h-12 sm:h-10">
-            Get Started →
+            Set Up My First Event →
           </Button>
         </DialogFooter>
       </DialogContent>

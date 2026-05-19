@@ -11,7 +11,7 @@ import { resetWizard } from "../lib/wizard-actions";
 import { WIZARD_STEP_IDS, getStepNumber, type WizardStepPayload } from "../lib/wizard-steps";
 import { toast } from "sonner";
 
-interface WizardSidebarProps {
+interface WizardProgressProps {
   stepNumber: number;
   totalSteps: number;
   progressPercentage: number;
@@ -39,10 +39,10 @@ function MobileBanner({
   onCollapse,
   onExit,
   onSkip,
-}: WizardSidebarProps) {
+}: WizardProgressProps) {
   if (isCollapsed) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[60] bg-background/95 backdrop-blur-sm border-b shadow-sm">
+      <div className="fixed top-0 left-0 right-0 z-[10001] bg-background/95 backdrop-blur-sm border-b shadow-sm">
         <button
           onClick={() => onCollapse(false)}
           className="w-full h-12 px-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
@@ -57,7 +57,7 @@ function MobileBanner({
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] bg-background/95 backdrop-blur-sm border-b shadow-lg">
+    <div className="fixed top-0 left-0 right-0 z-[10001] bg-background/95 backdrop-blur-sm border-b shadow-lg">
       {/* Main banner content */}
       <div className="px-3 py-2">
         <div className="flex items-center justify-between gap-2">
@@ -136,10 +136,10 @@ function DesktopCard({
   onCollapse,
   onExit,
   onSkip,
-}: WizardSidebarProps & { isSheetOpen: boolean }) {
+}: WizardProgressProps & { isSheetOpen: boolean }) {
   if (isCollapsed) {
     return (
-      <div className={`fixed bottom-6 z-[60] transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
+      <div className={`fixed bottom-6 z-[10001] transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
         <Button
           size="lg"
           onClick={() => onCollapse(false)}
@@ -155,7 +155,7 @@ function DesktopCard({
   }
 
   return (
-    <Card className={`fixed bottom-6 w-80 z-[60] shadow-2xl border-2 transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
+    <Card className={`fixed bottom-6 w-80 z-[10001] shadow-2xl border-2 transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
       {/* Header */}
       <div className="p-4 border-b bg-muted/50">
         <div className="flex items-center justify-between mb-2">
@@ -233,9 +233,9 @@ function DesktopCard({
 }
 
 /**
- * Main WizardSidebar component - renders mobile banner or desktop card
+ * Main WizardProgress component - renders mobile banner or desktop card
  */
-export function WizardSidebar() {
+export function WizardProgress() {
   const { state, next } = useOnboarding();
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -304,7 +304,7 @@ export function WizardSidebar() {
     }
   };
 
-  const sharedProps: WizardSidebarProps = {
+  const sharedProps: WizardProgressProps = {
     stepNumber,
     totalSteps,
     progressPercentage,

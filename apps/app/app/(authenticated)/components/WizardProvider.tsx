@@ -8,7 +8,7 @@ import { useIsMobile } from "@repo/design-system/hooks/use-mobile";
 import { useSidebar } from "@repo/design-system/components/ui/sidebar";
 import { wizardSteps, type WizardStepPayload } from "../lib/wizard-steps";
 import { updateWizardStep } from "../lib/wizard-actions";
-import { WizardSidebar } from "./WizardSidebar";
+import { WizardProgress } from "./WizardProgress";
 import "driver.js/dist/driver.css";
 
 interface WizardProviderProps {
@@ -38,7 +38,7 @@ function WizardDriverIntegration() {
       return;
     }
 
-    const element = payload?.element;
+    const element = payload?.spotlight?.element;
     if (!element) {
       return;
     }
@@ -82,7 +82,7 @@ function WizardDriverIntegration() {
         }
         
         // Determine spotlight side based on mobile/desktop
-        let spotlightSide = payload.spotlightSide || "bottom";
+        let spotlightSide = payload.spotlight?.side || "bottom";
         // On mobile, prefer top/bottom over left/right for better fit
         if (isMobile && (spotlightSide === "left" || spotlightSide === "right")) {
           spotlightSide = "bottom";
@@ -99,8 +99,8 @@ function WizardDriverIntegration() {
             {
               element,
               popover: {
-                title: payload.title,
-                description: payload.description || "",
+                title: payload.spotlight?.title || "",
+                description: payload.spotlight?.description || "",
                 side: spotlightSide,
                 showButtons: [],  // Ensure no buttons at step level too
               },
@@ -235,8 +235,8 @@ export function WizardProvider({ children, initialStep }: WizardProviderProps) {
       {/* Render the current step component */}
       <WizardStepRenderer />
 
-      {/* Show sidebar with progress */}
-      <WizardSidebar />
+      {/* Show progress indicator (mobile banner or desktop card) */}
+      <WizardProgress />
 
       {/* Handle driver.js spotlights */}
       <WizardDriverIntegration />

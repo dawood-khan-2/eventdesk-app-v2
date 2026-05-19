@@ -468,15 +468,15 @@ export function InvoiceSheet({
       <SheetContent 
         className="w-full sm:max-w-4xl overflow-y-auto"
         onInteractOutside={(e) => {
-          // Always prevent closing if the add service dialog is open
+          // Prevent closing if any sub-dialog is open
           if (addServiceDialogOpen) {
             e.preventDefault();
             return;
           }
           
+          // Prevent closing when clicking outside if form is dirty (no dialog, just prevent)
           if (isDirty && mode === "create") {
             e.preventDefault();
-            setShowCancelConfirm(true);
           }
         }}
       >
@@ -731,7 +731,7 @@ export function InvoiceSheet({
                 </div>
               )}
 
-              <SheetFooter>
+              <SheetFooter className="sticky bottom-0 bg-background border-t pt-4">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Close
                 </Button>
@@ -870,6 +870,7 @@ export function InvoiceSheet({
                     onChange={(e) => setFormData((prev) => ({ ...prev, billTo: e.target.value }))}
                     required
                     rows={3}
+                    className="max-h-80"
                   />
                 </div>
 
@@ -880,6 +881,7 @@ export function InvoiceSheet({
                     value={formData.shipTo}
                     onChange={(e) => setFormData((prev) => ({ ...prev, shipTo: e.target.value }))}
                     rows={3}
+                    className="max-h-80"
                   />
                 </div>
               </div>
@@ -1112,6 +1114,7 @@ export function InvoiceSheet({
                     value={formData.notes}
                     onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                     rows={3}
+                    className="max-h-80"
                   />
                 </div>
 
@@ -1122,11 +1125,12 @@ export function InvoiceSheet({
                     value={formData.terms}
                     onChange={(e) => setFormData((prev) => ({ ...prev, terms: e.target.value }))}
                     rows={3}
+                    className="max-h-80"
                   />
                 </div>
               </div>
 
-              <SheetFooter>
+              <SheetFooter className="sticky bottom-0 bg-background border-t pt-4">
                 <Button type="button" variant="outline" onClick={handleCancelClick}>
                   Cancel
                 </Button>

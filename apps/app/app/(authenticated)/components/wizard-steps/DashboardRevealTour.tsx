@@ -47,8 +47,8 @@ export function DashboardRevealTour() {
         {
           element: '[data-tour="dashboard"]',
           popover: {
-            title: "Welcome to Your Dashboard! 🎉",
-            description: "This is your command center where all the data you created comes together. Let's take a quick tour!",
+            title: "Welcome to Your Command Center 🎉",
+            description: "Your dashboard gives you a live overview of everything happening across your business—from enquiries to payments.",
             side: "bottom",
             align: "start",
           },
@@ -56,39 +56,39 @@ export function DashboardRevealTour() {
         {
           element: '[data-tour="stats-overview"]',
           popover: {
-            title: "Key Metrics at a Glance",
-            description: "See your most important stats: events, tasks, budget, bills, CSAT score, and lead conversion rate—all in one place!",
+            title: "Track Your Business at a Glance",
+            description: "Quickly monitor events, tasks, revenue, pending bills, customer satisfaction, and lead conversions—all in one place.",
             side: "bottom",
           },
         },
         {
           element: '[data-tour="task-overview"]',
           popover: {
-            title: "Task Management Hub",
-            description: "Track open, overdue, and idle tasks across all your events. The task you created appears here! Never miss a deadline.",
+            title: "Stay Ahead of Every Task",
+            description: "See open, overdue, and upcoming tasks across all events. The task you created appears here automatically.",
             side: "top",
           },
         },
         {
           element: '[data-tour="finance-overview"]',
           popover: {
-            title: "Financial Health Dashboard",
-            description: "Monitor your top cost categories, pending payments, and vendor dues. Stay on top of your event budgets.",
+            title: "Keep Your Finances Under Control",
+            description: "Monitor estimates, expenses, pending payments, and vendor dues without switching between tools.",
             side: "top",
           },
         },
         {
           element: '[data-tour="client-insights"]',
           popover: {
-            title: "Client & Lead Intelligence",
-            description: "Visualize your leads funnel and track repeat clients. See how the lead and event you created fit into the bigger picture!",
+            title: "Understand Your Clients Better",
+            description: "Track enquiries, repeat clients, and conversion trends to understand how your business is growing over time.",
             side: "top",
           },
         },
         {
           popover: {
-            title: "You're Ready to Rock! 🎉",
-            description: "See how everything connects? Your leads, events, tasks, and finances all work together seamlessly. Time to grow your event business!",
+            title: "Your Entire Event Workflow—Connected ✨",
+            description: "From leads and clients to events, tasks, guests, and finances—EventDesk keeps everything organized in one seamless workspace.",
           },
         },
       ],

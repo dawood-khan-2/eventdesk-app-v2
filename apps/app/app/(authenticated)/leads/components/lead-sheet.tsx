@@ -134,9 +134,15 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
 
   const onSubmit = (data: LeadFormValues) => {
     startTransition(async () => {
+      // When creating a lead, ensure CONVERTED status is not passed
+      // (This should not happen due to UI hiding, but adding safety check)
+      const submitData = lead 
+        ? data 
+        : { ...data, status: data.status === "CONVERTED" ? "NEW" : data.status };
+      
       const result = lead
-        ? await updateLead({ id: lead.id, ...data })
-        : await createLead(data);
+        ? await updateLead({ id: lead.id, ...submitData })
+        : await createLead(submitData as any);
 
       if (result.error) {
         toast.error(result.error);
@@ -169,10 +175,15 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
         <SheetContent 
           className="overflow-y-auto sm:max-w-xl"
           onInteractOutside={(e) => {
-            // Prevent closing when clicking outside if form is dirty
+            // Prevent closing if any sub-dialog is open
+            if (showDeleteDialog) {
+              e.preventDefault();
+              return;
+            }
+            
+            // Prevent closing when clicking outside if form is dirty (no dialog, just prevent)
             if (form.formState.isDirty && (isCreating || isEditing)) {
               e.preventDefault();
-              setShowCancelConfirm(true);
             }
           }}
         >
@@ -270,10 +281,15 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
                         <SelectItem value="CONTACTED">Contacted</SelectItem>
                         <SelectItem value="PROPOSAL_SENT">Proposal Sent</SelectItem>
                         <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
-                        <SelectItem value="CONVERTED">Converted</SelectItem>
+                        {!isCreating && <SelectItem value="CONVERTED">Converted</SelectItem>}
                         <SelectItem value="LOST">Lost</SelectItem>
                       </SelectContent>
                     </Select>
+                    {isCreating && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Note: To mark a lead as converted, create a client instead or use the conversion action.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -288,7 +304,7 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
                     <FormControl>
                       <Textarea
                         placeholder="Additional notes..."
-                        className="min-h-[100px]"
+                        className="min-h-[100px] max-h-80"
                         {...field}
                         disabled={isViewing}
                       />
@@ -315,7 +331,7 @@ export function LeadSheet({ open, onOpenChange, lead, mode: initialMode, onSucce
                 </div>
               )}
 
-              <SheetFooter className="mt-6 flex-col gap-2 sm:flex-col">
+              <SheetFooter className="sticky bottom-0 mt-6 flex-col gap-2 bg-background border-t pt-4 sm:flex-col">
                 {isViewing && lead && (
                   <>
                     <div className="flex w-full gap-2">

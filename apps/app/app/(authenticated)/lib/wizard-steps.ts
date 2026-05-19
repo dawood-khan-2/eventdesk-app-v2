@@ -38,11 +38,16 @@ export type WizardStepId = (typeof WIZARD_STEP_IDS)[number];
 export type StepType = "modal" | "spotlight" | "wait-action" | "tour";
 
 export interface WizardStepPayload {
-  title: string;
-  description?: string;
+  title: string; // Used by WizardProgress panel
+  description?: string; // Used by WizardProgress panel
   type: StepType;
-  element?: string; // CSS selector for driver.js spotlight
-  spotlightSide?: "top" | "right" | "bottom" | "left";
+  spotlight?: {
+    // Driver.js spotlight configuration (only for type: "spotlight")
+    title?: string; // Driver.js popover title (optional)
+    description: string; // Driver.js popover description
+    element: string; // CSS selector
+    side: "top" | "right" | "bottom" | "left";
+  };
   canSkip?: boolean;
 }
 
@@ -51,6 +56,7 @@ export interface WizardStepPayload {
  * Users create: Lead → Event → Task → Estimate → View populated Dashboard
  */
 export const wizardSteps: OnboardingStep[] = [
+  // Step 0: Welcome
   // Phase 1: Welcome
   {
     id: "welcome",
@@ -63,175 +69,230 @@ export const wizardSteps: OnboardingStep[] = [
     nextStep: "navigate-leads",
   },
 
+  // Step 1: Navigate to Leads
   // Phase 2: Lead Management
   {
     id: "navigate-leads",
     component: WaitForLeadStep,
     payload: {
-      title: "Create Your First Lead",
-      description: "Navigate to the Leads page to get started.",
+      title: "Every Event Starts With an Enquiry",
+      description: "This is where you'll capture new enquiries and turn them into real events.",
       type: "spotlight",
-      element: '[data-tour="leads"]',
-      spotlightSide: "right",
+      spotlight: {
+        description: "Start here",
+        element: '[data-tour="leads"]',
+        side: "right",
+      },
     } as WizardStepPayload,
     nextStep: "spotlight-lead-button",
   },
+
+  // Step 2: Create Lead Button
   {
     id: "spotlight-lead-button",
     component: WaitForLeadStep,
     payload: {
-      title: "Add a Lead",
-      description: "Click the 'Add Lead' button to create your first lead.",
+      title: "Bring Your First Lead Into EventDesk",
+      description: "Add a sample enquiry to see how leads, events, tasks, and billing all connect together.",
       type: "spotlight",
-      element: '[data-tour="create-lead-button"]',
-      spotlightSide: "bottom",
+      spotlight: {
+        description: "Create your first enquiry",
+        element: '[data-tour="create-lead-button"]',
+        side: "bottom",
+      },
     } as WizardStepPayload,
     nextStep: "wait-lead",
   },
+
+  // Step 3: Wait for Lead Creation
   {
     id: "wait-lead",
     component: WaitForLeadStep,
     payload: {
       title: "Create Your First Lead",
-      description: "Fill out the lead details. We'll wait for you to complete this step.",
+      description: "Add a few basic details about the enquiry. We'll guide you through the rest once it's created ✨",
       type: "wait-action",
     } as WizardStepPayload,
     nextStep: "navigate-events",
   },
 
+  // Step 4: Navigate to Events
   // Phase 3: Event Creation
   {
     id: "navigate-events",
     component: WaitForEventStep,
     payload: {
-      title: "Create an Event",
-      description: "Great! Now let's create an event. Navigate to the Events page.",
+      title: "Now Let's Plan the Event",
+      description: "Great start! Head over to Events to turn this enquiry into an active event workflow.",
       type: "spotlight",
-      element: '[data-tour="events"]',
-      spotlightSide: "right",
+      spotlight: {
+        description: "Open your event workspace",
+        element: '[data-tour="events"]',
+        side: "right",
+      },
     } as WizardStepPayload,
     nextStep: "spotlight-event-button",
   },
+
+  // Step 5: Create Event Button
   {
     id: "spotlight-event-button",
     component: WaitForEventStep,
     payload: {
-      title: "Add an Event",
-      description: "Click the 'Add Event' button to create your first event.",
+      title: "Create Your First Event",
+      description: "This is where everything comes together—clients, tasks, guests, schedules, and finances.",
       type: "spotlight",
-      element: '[data-tour="create-event-button"]',
-      spotlightSide: "bottom",
+      spotlight: {
+        description: "Create your first event",
+        element: '[data-tour="create-event-button"]',
+        side: "bottom",
+      },
     } as WizardStepPayload,
     nextStep: "wait-event",
   },
+
+  // Step 6: Wait for Event Creation
   {
     id: "wait-event",
     component: WaitForEventStep,
     payload: {
-      title: "Create Your First Event",
-      description: "Add event details. You can link it to the lead you just created!",
+      title: "Set Up the Event",
+      description: "Add the event details and link it to the lead you just created. EventDesk will automatically connect everything for you 🔗",
       type: "wait-action",
     } as WizardStepPayload,
     nextStep: "navigate-event-details",
   },
 
+  // Step 7: Navigate to Event Details
   // Phase 4: Task Management
   {
     id: "navigate-event-details",
     component: WaitForTaskStep,
     payload: {
-      title: "Add Tasks to Your Event",
-      description: "Click on the event you just created to view its details.",
+      title: "Open Your Event Workspace",
+      description: "Click the event you created to manage tasks, guests, timelines, estimates, and more—all from one place.",
       type: "spotlight",
-      element: '[data-tour="event-card"]',
-      spotlightSide: "bottom",
+      spotlight: {
+        description: "Open event details",
+        element: '[data-tour="event-card"]',
+        side: "bottom",
+      },
     } as WizardStepPayload,
     nextStep: "spotlight-tasks",
   },
+
+  // Step 8: Tasks Section Spotlight
   {
     id: "spotlight-tasks",
     component: WaitForTaskStep,
     payload: {
-      title: "Tasks Section",
-      description: "Here you can add tasks to keep track of everything needed for your event.",
+      title: "Keep Every Detail On Track",
+      description: "Tasks help your team stay organized before, during, and after the event.",
       type: "spotlight",
-      element: '[data-tour="tasks-section"]',
-      spotlightSide: "left",
+      spotlight: {
+        description: "Track event activities",
+        element: '[data-tour="tasks-section"]',
+        side: "left",
+      },
     } as WizardStepPayload,
     nextStep: "spotlight-task-button",
   },
+
+  // Step 9: Add Task Button
   {
     id: "spotlight-task-button",
     component: WaitForTaskStep,
     payload: {
       title: "Add Your First Task",
-      description: "Click this button to add a task for your event.",
+      description: "Create a task to track an important activity for this event—like venue booking, catering, or guest coordination.",
       type: "spotlight",
-      element: '[data-tour="add-task-button"]',
-      spotlightSide: "bottom",
+      spotlight: {
+        description: "Create your first task",
+        element: '[data-tour="add-task-button"]',
+        side: "bottom",
+      },
     } as WizardStepPayload,
     nextStep: "wait-task",
   },
+
+  // Step 10: Wait for Task Creation
   {
     id: "wait-task",
     component: WaitForTaskStep,
     payload: {
-      title: "Add a Task",
-      description: "Create at least one task for your event to continue.",
+      title: "Create a Task",
+      description: "Add at least one task to continue. Your event workflow is already taking shape 🚀",
       type: "wait-action",
     } as WizardStepPayload,
     nextStep: "spotlight-estimates-tab",
   },
 
+  // Step 11: Estimates Tab Spotlight
   // Phase 5: Financial Management (Event-based)
   {
     id: "spotlight-estimates-tab",
     component: WaitForEstimateStep,
     payload: {
-      title: "Create an Estimate",
-      description: "Now let's create an estimate for this event. Click the Estimates tab.",
+      title: "Let's Talk Budget",
+      description: "Estimates help you share pricing with clients and keep your event finances organized from day one.",
       type: "spotlight",
-      element: '[data-tour="estimates-tab"]',
-      spotlightSide: "bottom",
+      spotlight: {
+        description: "Manage event pricing",
+        element: '[data-tour="estimates-tab"]',
+        side: "bottom",
+      },
     } as WizardStepPayload,
     nextStep: "spotlight-estimate-button-event",
   },
+
+  // Step 12: Create Estimate Button
   {
     id: "spotlight-estimate-button-event",
     component: WaitForEstimateStep,
     payload: {
-      title: "Add an Estimate",
-      description: "Click the 'Add Estimate' button to create an estimate for your event.",
+      title: "Create Your First Estimate",
+      description: "Add pricing, services, or packages to prepare a professional estimate for this event.",
       type: "spotlight",
-      element: '[data-tour="create-estimate-button-event"]',
-      spotlightSide: "bottom",
+      spotlight: {
+        description: "Create your first estimate",
+        element: '[data-tour="create-estimate-button-event"]',
+        side: "bottom",
+      },
     } as WizardStepPayload,
     nextStep: "wait-estimate",
   },
+
+  // Step 13: Wait for Estimate Creation
   {
     id: "wait-estimate",
     component: WaitForEstimateStep,
     payload: {
-      title: "Create Your First Estimate",
-      description: "Add line items and pricing to complete your estimate.",
+      title: "Build Your Estimate",
+      description: "Add a few line items and pricing details. Once saved, your financial workflow becomes part of the event automatically 💸",
       type: "wait-action",
     } as WizardStepPayload,
     nextStep: "navigate-dashboard",
   },
 
+  // Step 14: Navigate to Dashboard
   // Phase 6: Dashboard Reveal
   {
     id: "navigate-dashboard",
     component: DashboardRevealTour,
     payload: {
-      title: "See What You've Accomplished!",
-      description: "Let's head to the dashboard to see all your work visualized.",
+      title: "See Everything Working Together",
+      description: "Let's head to the dashboard and see how your leads, events, tasks, and finances connect in real time.",
       type: "spotlight",
-      element: '[data-tour="dashboard"]',
-      spotlightSide: "right",
+      spotlight: {
+        description: "See everything together",
+        element: '[data-tour="dashboard"]',
+        side: "right",
+      },
     } as WizardStepPayload,
     nextStep: "dashboard-tour",
   },
+
+  // Step 15: Dashboard Tour
   {
     id: "dashboard-tour",
     component: DashboardRevealTour,
@@ -243,13 +304,14 @@ export const wizardSteps: OnboardingStep[] = [
     nextStep: "completion",
   },
 
+  // Step 16: Completion
   // Phase 7: Completion
   {
     id: "completion",
     component: CompletionModal,
     payload: {
-      title: "You're All Set! 🎊",
-      description: "You've completed the onboarding tour. Time to grow your event business!",
+      title: "You're Ready to Start Managing Events 🎊",
+      description: "You've completed your first workflow in EventDesk!",
       type: "modal",
     } as WizardStepPayload,
     nextStep: null, // End of wizard

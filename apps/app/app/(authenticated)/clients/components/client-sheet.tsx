@@ -165,10 +165,15 @@ export function ClientSheet({ open, onOpenChange, client, mode: initialMode, onS
         <SheetContent 
           className="overflow-y-auto sm:max-w-xl"
           onInteractOutside={(e) => {
-            // Prevent closing when clicking outside if form is dirty
+            // Prevent closing if any sub-dialog is open
+            if (showDeleteDialog) {
+              e.preventDefault();
+              return;
+            }
+            
+            // Prevent closing when clicking outside if form is dirty (no dialog, just prevent)
             if (form.formState.isDirty && (isCreating || isEditing)) {
               e.preventDefault();
-              setShowCancelConfirm(true);
             }
           }}
         >
@@ -258,7 +263,7 @@ export function ClientSheet({ open, onOpenChange, client, mode: initialMode, onS
                     <FormControl>
                       <Textarea
                         placeholder="Additional notes..."
-                        className="min-h-[100px]"
+                        className="min-h-[100px] max-h-80"
                         {...field}
                         disabled={isViewing}
                       />
@@ -285,7 +290,7 @@ export function ClientSheet({ open, onOpenChange, client, mode: initialMode, onS
                 </div>
               )}
 
-              <SheetFooter className="mt-6 flex-col gap-2 sm:flex-col">
+              <SheetFooter className="sticky bottom-0 mt-6 flex-col gap-2 bg-background border-t pt-4 sm:flex-col">
                 {isViewing && client && (
                   <>
                     <div className="flex w-full gap-2">

@@ -480,7 +480,7 @@ export function TaskEditDialog({
                   <Textarea
                     id="edit-description"
                     placeholder="Task description..."
-                    className="min-h-[100px]"
+                    className="min-h-[100px] max-h-80"
                     value={description}
                     onChange={(e) => {
                       setDescription(e.target.value);
