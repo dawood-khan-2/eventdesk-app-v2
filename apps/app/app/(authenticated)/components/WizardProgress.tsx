@@ -287,7 +287,7 @@ export function WizardProgress() {
 
   const handleExit = async () => {
     const confirmed = window.confirm(
-      "Are you sure you want to skip the tour? You can restart it later from Settings."
+      "Are you sure you want to skip the tour? NOTE: The onboarding wizard can't be restarted."
     );
 
     if (confirmed) {
@@ -295,7 +295,7 @@ export function WizardProgress() {
       const result = await resetWizard();
 
       if (result.success) {
-        toast.success("Tour skipped. You can restart it anytime from Settings.");
+        toast.success("Onboarding tour skipped successfully");
         // Page will reload due to revalidatePath
       } else {
         toast.error("Failed to exit tour");
