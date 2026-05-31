@@ -84,6 +84,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
   // Form dirty state and confirmation dialog
   const [isDirty, setIsDirty] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ name: false, leadOrClientId: false, startDate: false, endDate: false });
   
   // Dropdowns state
   const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
@@ -253,24 +254,37 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset field errors
+    setFieldErrors({ name: false, leadOrClientId: false, startDate: false, endDate: false });
+    
     // Validation
+    const errors = { name: false, leadOrClientId: false, startDate: false, endDate: false };
+    
     if (!name.trim()) {
+      errors.name = true;
       toast.error("Event name is required");
+      setFieldErrors(errors);
       return;
     }
     
     if (!leadOrClientId) {
+      errors.leadOrClientId = true;
       toast.error("Please select a lead or client");
+      setFieldErrors(errors);
       return;
     }
     
     if (!startDate) {
+      errors.startDate = true;
       toast.error("Start date is required");
+      setFieldErrors(errors);
       return;
     }
     
     if (!endDate) {
+      errors.endDate = true;
       toast.error("End date is required");
+      setFieldErrors(errors);
       return;
     }
     
@@ -417,6 +431,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                       variant="outline"
                       role="combobox"
                       aria-expanded={leadClientOpen}
+                      aria-invalid={fieldErrors.leadOrClientId}
                       className="w-full justify-between font-normal"
                     >
                       {leadOrClientId ? (
@@ -606,6 +621,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={isViewing}
+                aria-invalid={fieldErrors.name}
               />
             </div>
 
@@ -697,6 +713,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
+                      aria-invalid={fieldErrors.startDate}
                       className={cn(
                         "w-full justify-start text-left font-normal",
                         !startDate && "text-muted-foreground"
@@ -740,6 +757,7 @@ export function EventSheet({ open, onOpenChange, event, mode: initialMode, onSuc
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
+                      aria-invalid={fieldErrors.endDate}
                       className={cn(
                         "w-full justify-start text-left font-normal",
                         !endDate && "text-muted-foreground"

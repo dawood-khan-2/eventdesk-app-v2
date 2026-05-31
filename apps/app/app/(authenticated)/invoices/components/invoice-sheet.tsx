@@ -155,6 +155,7 @@ export function InvoiceSheet({
   // Form dirty state and confirmation dialog
   const [isDirty, setIsDirty] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ number: false, clientId: false, eventId: false, billTo: false, dueDate: false });
 
   const [formData, setFormData] = useState({
     number: "",
@@ -327,28 +328,44 @@ export function InvoiceSheet({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Reset field errors
+    setFieldErrors({ number: false, clientId: false, eventId: false, billTo: false, dueDate: false });
+
+    // Validate and mark errors
+    const errors = { number: false, clientId: false, eventId: false, billTo: false, dueDate: false };
+
     if (!formData.number.trim()) {
+      errors.number = true;
       toast.error("Invoice number is required");
+      setFieldErrors(errors);
       return;
     }
 
     if (!formData.clientId) {
+      errors.clientId = true;
       toast.error("Client is required");
+      setFieldErrors(errors);
       return;
     }
 
     if (!formData.eventId) {
+      errors.eventId = true;
       toast.error("Event is required");
+      setFieldErrors(errors);
       return;
     }
 
     if (!formData.billTo.trim()) {
+      errors.billTo = true;
       toast.error("Bill to address is required");
+      setFieldErrors(errors);
       return;
     }
 
     if (!formData.dueDate) {
+      errors.dueDate = true;
       toast.error("Due date is required");
+      setFieldErrors(errors);
       return;
     }
 
@@ -752,6 +769,7 @@ export function InvoiceSheet({
                     value={formData.number}
                     onChange={(e) => setFormData((prev) => ({ ...prev, number: e.target.value }))}
                     required
+                    aria-invalid={fieldErrors.number}
                   />
                 </div>
               </div>
@@ -766,6 +784,7 @@ export function InvoiceSheet({
                         variant="outline"
                         role="combobox"
                         aria-expanded={clientComboboxOpen}
+                        aria-invalid={fieldErrors.clientId}
                         className="w-full justify-between font-normal"
                         disabled={!!eventData}
                       >
@@ -817,6 +836,7 @@ export function InvoiceSheet({
                         variant="outline"
                         role="combobox"
                         aria-expanded={eventComboboxOpen}
+                        aria-invalid={fieldErrors.eventId}
                         className="w-full justify-between font-normal"
                         disabled={!formData.clientId || !!eventData}
                       >
@@ -871,6 +891,7 @@ export function InvoiceSheet({
                     required
                     rows={3}
                     className="max-h-80"
+                    aria-invalid={fieldErrors.billTo}
                   />
                 </div>
 
@@ -905,6 +926,7 @@ export function InvoiceSheet({
                     value={formData.dueDate}
                     onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value }))}
                     required
+                    aria-invalid={fieldErrors.dueDate}
                   />
                 </div>
 

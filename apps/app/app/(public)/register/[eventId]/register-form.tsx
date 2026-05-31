@@ -38,16 +38,34 @@ export function RegisterForm({
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState({ name: false, email: false, phone: false });
   const [isPending, startTransition] = useTransition();
   const captchaRef = useRef<HCaptcha>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({ name: false, email: false, phone: false });
+
+    // Validate required fields
+    const errors = { name: false, email: false, phone: false };
+    
+    if (!name.trim()) {
+      errors.name = true;
+    }
 
     // Validate at least one contact method
     if (!email && !phone) {
+      errors.email = true;
+      errors.phone = true;
       setError("Please provide either an email or phone number");
+      setFieldErrors(errors);
+      return;
+    }
+
+    if (errors.name) {
+      setError("Name is required");
+      setFieldErrors(errors);
       return;
     }
 
@@ -169,6 +187,7 @@ export function RegisterForm({
               onChange={(e) => setName(e.target.value)}
               required
               disabled={isPending}
+              aria-invalid={fieldErrors.name}
             />
           </div>
 
@@ -184,6 +203,7 @@ export function RegisterForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isPending}
+              aria-invalid={fieldErrors.email}
             />
           </div>
 
@@ -199,6 +219,7 @@ export function RegisterForm({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               disabled={isPending}
+              aria-invalid={fieldErrors.phone}
             />
           </div>
 

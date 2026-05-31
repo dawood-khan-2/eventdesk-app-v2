@@ -112,6 +112,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
   const currency = getCurrencyConfig(currencyCode);
   const [isDirty, setIsDirty] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ title: false, leadOrClientId: false });
   const [formData, setFormData] = useState({
     title: estimate?.title || "",
     leadOrClientId: estimate?.leadId || estimate?.clientId || "",
@@ -288,13 +289,22 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset field errors
+    setFieldErrors({ title: false, leadOrClientId: false });
+    
+    const errors = { title: false, leadOrClientId: false };
+    
     if (!formData.title.trim()) {
+      errors.title = true;
       toast.error("Title is required");
+      setFieldErrors(errors);
       return;
     }
 
     if (!formData.leadOrClientId || !formData.leadOrClientType) {
+      errors.leadOrClientId = true;
       toast.error("Lead or Client is required");
+      setFieldErrors(errors);
       return;
     }
 
@@ -694,6 +704,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   required
+                  aria-invalid={fieldErrors.title}
                 />
               </div>
 
@@ -706,6 +717,7 @@ export function EstimateSheet({ open, onOpenChange, mode, estimate, onSuccess, c
                       variant="outline"
                       role="combobox"
                       aria-expanded={comboboxOpen}
+                      aria-invalid={fieldErrors.leadOrClientId}
                       className="w-full justify-between font-normal"
                       disabled={!!eventData} // Disable when in event context
                     >
