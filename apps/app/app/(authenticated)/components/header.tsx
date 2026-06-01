@@ -15,6 +15,7 @@ import { Menu, PanelLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { BookDemoButton } from "@/components/book-demo-button";
+import EventDeskIcon from "@/app/eventdesk-icon.svg";
 
 type HeaderProps = {
   pages: string[];
@@ -28,6 +29,11 @@ export const Header = ({ pages, page, children }: HeaderProps) => {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-2">
       <div className="flex items-center gap-2 px-4">
+        {isMobile && (
+          <Link href="/" className="flex h-7 w-7 shrink-0 items-center justify-center -ml-1">
+            <EventDeskIcon className="h-6 w-[18px] text-foreground" />
+          </Link>
+        )}
         <Button
           data-sidebar="trigger"
           variant="ghost"

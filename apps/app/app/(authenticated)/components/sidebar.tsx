@@ -1,7 +1,9 @@
 "use client";
 
-import { OrganizationSwitcher, UserButton } from "@repo/auth/client";
+import { UserButton } from "@repo/auth/client";
 import { ModeToggle } from "@repo/design-system/components/mode-toggle";
+import EventDeskLogoFull from "@/app/eventdesk-logo-full.svg";
+import EventDeskIcon from "@/app/eventdesk-icon.svg";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   Collapsible,
@@ -165,17 +167,19 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <div
+              <Link
+                href="/"
                 className={cn(
-                  "h-[36px] overflow-hidden transition-all [&>div]:w-full",
-                  sidebar.open ? "" : "-mx-1"
+                  "flex items-center h-[36px] overflow-hidden transition-all",
+                  sidebar.open ? "justify-start px-2" : "justify-center"
                 )}
               >
-                <OrganizationSwitcher
-                  afterSelectOrganizationUrl="/"
-                  hidePersonal
-                />
-              </div>
+                {sidebar.open ? (
+                  <EventDeskLogoFull className="h-8 w-auto text-foreground" />
+                ) : (
+                  <EventDeskIcon className="h-8 w-6 text-foreground" />
+                )}
+              </Link>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
