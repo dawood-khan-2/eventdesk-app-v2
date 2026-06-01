@@ -14,7 +14,7 @@ interface EventOverviewCardProps {
 
 export function EventOverviewCard({ event, onEditClick, onSwitcherClick, userRole }: EventOverviewCardProps) {
   const formatDateTime = (date: Date) => {
-    return format(new Date(date), "MMM d, yyyy 'at' h:mm a");
+    return format(new Date(date), "MMM d, yyyy");
   };
 
   return (

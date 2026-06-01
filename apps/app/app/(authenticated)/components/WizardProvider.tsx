@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { OnboardingProvider, useOnboarding } from "@onboardjs/react";
 import { driver } from "driver.js";
 import type { DriveStep } from "driver.js";
@@ -24,6 +24,7 @@ function WizardDriverIntegration() {
   const { state, next } = useOnboarding();
   const isMobile = useIsMobile();
   const sidebar = useSidebar();
+  const sidebarOpenedForStepRef = useRef<string | number | null>(null);
 
   useEffect(() => {
     if (!state?.currentStep) {
@@ -58,10 +59,19 @@ function WizardDriverIntegration() {
     ];
     const isSidebarElement = sidebarNavElements.some(nav => element === nav);
     
-    // On mobile, open sidebar if we're spotlighting a sidebar nav element
+    // On mobile, open sidebar ONCE per step if we're spotlighting a sidebar nav element
     if (isMobile && isSidebarElement && !sidebar.openMobile) {
-      console.log("WizardDriverIntegration - Opening sidebar for mobile spotlight");
-      sidebar.setOpenMobile(true);
+      // Only open if we haven't already opened for this step (prevents loop on sidebar state changes)
+      if (sidebarOpenedForStepRef.current !== state.currentStep.id) {
+        console.log("WizardDriverIntegration - Opening sidebar for mobile spotlight");
+        sidebar.setOpenMobile(true);
+        sidebarOpenedForStepRef.current = state.currentStep.id;
+      }
+    }
+    
+    // Reset tracking when step changes
+    if (sidebarOpenedForStepRef.current && sidebarOpenedForStepRef.current !== state.currentStep.id) {
+      sidebarOpenedForStepRef.current = null;
     }
 
     // Wait for element to be in DOM, with retries
@@ -161,7 +171,7 @@ function WizardDriverIntegration() {
       if (driverObj) driverObj.destroy();
       // Don't auto-close sidebar here - let step transitions handle it
     };
-  }, [state?.currentStep?.id, isMobile, sidebar]); // Added dependencies
+  }, [state?.currentStep?.id, isMobile]); // Removed sidebar from deps to prevent loop
 
   // Separate effect to close sidebar when transitioning away from sidebar nav to non-spotlight steps
   useEffect(() => {
@@ -178,7 +188,7 @@ function WizardDriverIntegration() {
       console.log("WizardDriverIntegration - Closing sidebar for non-spotlight step:", state.currentStep.id);
       sidebar.setOpenMobile(false);
     }
-  }, [state?.currentStep?.id, isMobile, sidebar]);
+  }, [state?.currentStep?.id, isMobile]); // Removed sidebar from deps to prevent loop
 
   return null;
 }

@@ -9,6 +9,7 @@ import { NotificationsProvider } from "./components/notifications-provider";
 import { GlobalSidebar } from "./components/sidebar";
 import { ExitFeedbackProvider } from "./components/exit-feedback-provider";
 import { WizardProvider } from "./components/WizardProvider";
+import { TawkVisibilityController } from "./components/TawkVisibilityController";
 import { database } from "@repo/database";
 
 type AppLayoutProperties = {
@@ -69,24 +70,27 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
         />
       )}
       
-      {/* Tawk.to Chat Widget - Authenticated routes only, hidden during active onboarding */}
+      {/* Tawk.to Chat Widget - Authenticated routes only, hidden during active onboarding and when sheets are open */}
       {chatWidgetEnabled && 
        tawkPropertyId && 
        tawkWidgetId && 
        (wizardStep === "COMPLETED" || wizardStep === "DISMISSED") && (
-        <Script id="tawk-to-chat" strategy="afterInteractive">
-          {`
-            var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-            (function(){
-              var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-              s1.async=true;
-              s1.src='https://embed.tawk.to/${tawkPropertyId}/${tawkWidgetId}';
-              s1.charset='UTF-8';
-              s1.setAttribute('crossorigin','*');
-              s0.parentNode.insertBefore(s1,s0);
-            })();
-          `}
-        </Script>
+        <>
+          <Script id="tawk-to-chat" strategy="afterInteractive">
+            {`
+              var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+              (function(){
+                var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+                s1.async=true;
+                s1.src='https://embed.tawk.to/${tawkPropertyId}/${tawkWidgetId}';
+                s1.charset='UTF-8';
+                s1.setAttribute('crossorigin','*');
+                s0.parentNode.insertBefore(s1,s0);
+              })();
+            `}
+          </Script>
+          <TawkVisibilityController />
+        </>
       )}
     </>
   );

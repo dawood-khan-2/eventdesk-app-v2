@@ -2,7 +2,7 @@ import { ModeToggle } from '@repo/design-system/components/mode-toggle';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
 import dashboard from '../dashboard.png';
-import Logo from '../logo.svg';
+import EventDeskIcon from '../eventdesk-icon.svg';
 
 type AuthLayoutProps = {
   readonly children: ReactNode;
@@ -14,7 +14,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
         <div className="absolute inset-0 bg-zinc-900" />
         <div className="relative z-20 flex items-center font-medium text-lg">
-          <Logo className="mr-2 h-6 w-6 text-white" />
+          <EventDeskIcon className="mr-2 h-6 w-6 text-white" />
           Event Desk
         </div>
         <div className="absolute top-4 right-4">

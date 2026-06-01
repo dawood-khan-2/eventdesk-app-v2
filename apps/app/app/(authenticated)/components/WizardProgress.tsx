@@ -42,7 +42,7 @@ function MobileBanner({
 }: WizardProgressProps) {
   if (isCollapsed) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[10001] bg-background/95 backdrop-blur-sm border-b shadow-sm">
+      <div className="wizard-panel fixed top-0 left-0 right-0 z-[10001] bg-background/95 backdrop-blur-sm border-b shadow-sm">
         <button
           onClick={() => onCollapse(false)}
           className="w-full h-12 px-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
@@ -57,7 +57,7 @@ function MobileBanner({
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[10001] bg-background/95 backdrop-blur-sm border-b shadow-lg">
+    <div className="wizard-panel fixed top-0 left-0 right-0 z-[10001] bg-background/95 backdrop-blur-sm border-b shadow-lg">
       {/* Main banner content */}
       <div className="px-3 py-2">
         <div className="flex items-center justify-between gap-2">
@@ -139,7 +139,7 @@ function DesktopCard({
 }: WizardProgressProps & { isSheetOpen: boolean }) {
   if (isCollapsed) {
     return (
-      <div className={`fixed bottom-6 z-[10001] transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
+      <div className={`wizard-panel fixed bottom-6 z-[10001] transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
         <Button
           size="lg"
           onClick={() => onCollapse(false)}
@@ -155,7 +155,7 @@ function DesktopCard({
   }
 
   return (
-    <Card className={`fixed bottom-6 w-80 z-[10001] shadow-2xl border-2 transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
+    <Card className={`wizard-panel fixed bottom-6 w-80 z-[10001] shadow-2xl border-2 transition-all duration-300 ${isSheetOpen ? 'left-6' : 'right-6'}`}>
       {/* Header */}
       <div className="p-4 border-b bg-muted/50">
         <div className="flex items-center justify-between mb-2">
@@ -287,7 +287,7 @@ export function WizardProgress() {
 
   const handleExit = async () => {
     const confirmed = window.confirm(
-      "Are you sure you want to skip the tour? You can restart it later from Settings."
+      "Are you sure you want to skip the tour? NOTE: The onboarding wizard can't be restarted."
     );
 
     if (confirmed) {
@@ -295,7 +295,7 @@ export function WizardProgress() {
       const result = await resetWizard();
 
       if (result.success) {
-        toast.success("Tour skipped. You can restart it anytime from Settings.");
+        toast.success("Onboarding tour skipped successfully");
         // Page will reload due to revalidatePath
       } else {
         toast.error("Failed to exit tour");

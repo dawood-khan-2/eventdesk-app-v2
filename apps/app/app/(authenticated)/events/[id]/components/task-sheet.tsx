@@ -45,6 +45,7 @@ interface ChecklistItem {
 export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId, inheritedPriority, inheritedType }: TaskSheetProps) {
   const [isPending, startTransition] = useTransition();
   const isSubtask = !!parentTaskId;
+  const [fieldErrors, setFieldErrors] = useState({ title: false });
   
   // Form state
   const [type, setType] = useState<"PRE_EVENT" | "ON_EVENT" | "POST_EVENT">("PRE_EVENT");
@@ -116,8 +117,12 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset field errors
+    setFieldErrors({ title: false });
+    
     // Validation
     if (!title.trim()) {
+      setFieldErrors({ title: true });
       toast.error("Task title is required");
       return;
     }
@@ -205,6 +210,7 @@ export function TaskSheet({ open, onOpenChange, eventId, onSuccess, parentTaskId
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
+              aria-invalid={fieldErrors.title}
             />
           </div>
 

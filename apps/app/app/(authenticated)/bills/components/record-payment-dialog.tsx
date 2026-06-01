@@ -18,10 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/design-system/components/ui/select";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useTransition, useEffect } from "react";
 import { recordBillPayment } from "../actions";
-import { getPaymentModes } from "../../settings/actions";
+import { getPaymentModes, createPaymentMode } from "../../settings/actions";
 
 type RecordPaymentDialogProps = {
   billId: string | null;
@@ -48,6 +49,9 @@ export function RecordPaymentDialog({
   const [paymentModeId, setPaymentModeId] = useState<string>("");
   const [referenceNumber, setReferenceNumber] = useState<string>("");
   const [paymentModes, setPaymentModes] = useState<{ id: string; name: string }[]>([]);
+  const [addPaymentModeDialogOpen, setAddPaymentModeDialogOpen] = useState(false);
+  const [newPaymentModeName, setNewPaymentModeName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load payment modes
   useEffect(() => {
@@ -63,6 +67,35 @@ export function RecordPaymentDialog({
     }
     loadPaymentModes();
   }, []);
+
+  const handleAddPaymentMode = () => {
+    setIsSubmitting(true);
+    
+    if (!newPaymentModeName.trim()) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    createPaymentMode({ name: newPaymentModeName.trim() })
+      .then((result) => {
+        if (result.error) {
+          toast.error(result.error);
+        } else if (result.data) {
+          // Add to local state
+          setPaymentModes(prev => [...prev, result.data]);
+          
+          // Auto-select the newly created payment mode
+          setPaymentModeId(result.data.id);
+          
+          toast.success("Payment mode created and selected");
+          setNewPaymentModeName("");
+          setAddPaymentModeDialogOpen(false);
+        }
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
+  };
 
   const handleRecordPayment = () => {
     if (!billId) return;
@@ -115,10 +148,15 @@ export function RecordPaymentDialog({
   };
 
   return (
+    <>
     <Dialog
       open={!!billId}
       onOpenChange={(open) => {
         if (!open) {
+          // Don't close if the add payment mode dialog is open
+          if (addPaymentModeDialogOpen) {
+            return;
+          }
           setAmount("");
           setPaymentDate(new Date().toISOString().split("T")[0]);
           setReferenceNumber("");
@@ -165,7 +203,16 @@ export function RecordPaymentDialog({
 
           <div>
             <Label htmlFor="payment-mode">Payment Mode</Label>
-            <Select value={paymentModeId} onValueChange={setPaymentModeId}>
+            <Select 
+              value={paymentModeId} 
+              onValueChange={(value) => {
+                if (value === "add-new") {
+                  setAddPaymentModeDialogOpen(true);
+                } else {
+                  setPaymentModeId(value);
+                }
+              }}
+            >
               <SelectTrigger className="mt-2">
                 <SelectValue placeholder="Select payment mode" />
               </SelectTrigger>
@@ -175,6 +222,12 @@ export function RecordPaymentDialog({
                     {mode.name}
                   </SelectItem>
                 ))}
+                <SelectItem value="add-new" className="text-primary">
+                  <div className="flex items-center">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Payment Mode
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -202,5 +255,56 @@ export function RecordPaymentDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={addPaymentModeDialogOpen} onOpenChange={(open) => {
+      setAddPaymentModeDialogOpen(open);
+      if (!open) {
+        setNewPaymentModeName("");
+      }
+    }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Payment Mode</DialogTitle>
+          <DialogDescription className="sr-only">Create a new payment mode</DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAddPaymentMode();
+          }}
+        >
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="payment-mode-name">Payment Mode Name</Label>
+              <Input
+                id="payment-mode-name"
+                placeholder="e.g., Credit Card, Cash, Bank Transfer..."
+                value={newPaymentModeName}
+                onChange={(e) => setNewPaymentModeName(e.target.value)}
+                className="mt-2"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAddPaymentModeDialogOpen(false);
+                setNewPaymentModeName("");
+              }}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting || !newPaymentModeName.trim()}>
+              {isSubmitting ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

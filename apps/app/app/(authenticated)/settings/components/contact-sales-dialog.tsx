@@ -28,6 +28,7 @@ import { submitContactSales, type ContactSalesInput } from "../actions";
 export function ContactSalesDialog() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState({ name: false, email: false, jobTitle: false, companySize: false });
   const [isPending, startTransition] = useTransition();
   const [formData, setFormData] = useState<ContactSalesInput>({
     name: "",
@@ -41,6 +42,20 @@ export function ContactSalesDialog() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({ name: false, email: false, jobTitle: false, companySize: false });
+
+    // Validate required fields
+    const errors = { name: false, email: false, jobTitle: false, companySize: false };
+    if (!formData.name.trim()) errors.name = true;
+    if (!formData.email.trim()) errors.email = true;
+    if (!formData.jobTitle.trim()) errors.jobTitle = true;
+    if (!formData.companySize) errors.companySize = true;
+
+    if (Object.values(errors).some(v => v)) {
+      setError("Please fill in all required fields");
+      setFieldErrors(errors);
+      return;
+    }
 
     startTransition(async () => {
       const result = await submitContactSales(formData);
@@ -92,6 +107,7 @@ export function ContactSalesDialog() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
+                aria-invalid={fieldErrors.name}
               />
             </div>
 
@@ -103,6 +119,7 @@ export function ContactSalesDialog() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
+                aria-invalid={fieldErrors.email}
               />
             </div>
 
@@ -123,6 +140,7 @@ export function ContactSalesDialog() {
                 value={formData.jobTitle}
                 onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
                 required
+                aria-invalid={fieldErrors.jobTitle}
               />
             </div>
 
@@ -134,7 +152,7 @@ export function ContactSalesDialog() {
                   setFormData({ ...formData, companySize: value as ContactSalesInput["companySize"] })
                 }
               >
-                <SelectTrigger id="companySize">
+                <SelectTrigger id="companySize" aria-invalid={fieldErrors.companySize}>
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>

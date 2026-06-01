@@ -69,3 +69,9 @@
     @apply left-4 right-4;
   }
 }
+
+/* Keep wizard panel interactive during driver.js spotlight */
+.driver-active .wizard-panel,
+.driver-active .wizard-panel * {
+  pointer-events: auto !important;
+}

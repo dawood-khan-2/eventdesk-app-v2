@@ -41,6 +41,7 @@ export function ItinerarySheet({
   onSuccess 
 }: ItinerarySheetProps) {
   const [isPending, startTransition] = useTransition();
+  const [fieldErrors, setFieldErrors] = useState({ selectedDate: false });
   
   // Form state
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(eventStartDate);
@@ -75,8 +76,12 @@ export function ItinerarySheet({
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset field errors
+    setFieldErrors({ selectedDate: false });
+    
     // Validation
     if (!selectedDate) {
+      setFieldErrors({ selectedDate: true });
       toast.error("Please select a date");
       return;
     }
@@ -139,6 +144,7 @@ export function ItinerarySheet({
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
+                    aria-invalid={fieldErrors.selectedDate}
                     className={cn(
                       "w-full justify-start text-left font-normal",
                       !selectedDate && "text-muted-foreground"
